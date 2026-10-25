@@ -17,6 +17,7 @@ export const CODES = {
   share_gone: EXIT.notFound,
   bad_code: EXIT.notFound,
   not_a_folder: EXIT.error,
+  invalid_name: EXIT.error,
   already_exists: EXIT.error,
   no_space: EXIT.error,
   network: EXIT.error,

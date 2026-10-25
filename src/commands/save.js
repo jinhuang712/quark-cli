@@ -1,4 +1,5 @@
 import { listDir, resolve } from '../session.js';
+import { stored } from '../names.js';
 import { isDir, normalize } from '../browse.js';
 import { size } from '../format.js';
 import { fail, usageError } from '../errors.js';
@@ -65,7 +66,7 @@ export default {
     const items = await shareItems(page, id, stoken, link);
     if (items.length === 0) throw fail('share_gone', `这条分享里没有内容: ${link}`, { next: '请对方重新分享' });
     const existing = new Set((await listDir(page, dir.fid)).map((f) => f.file_name));
-    const clash = items.filter((i) => existing.has(i.file_name)).map((i) => `${dirPath === '/' ? '' : dirPath}/${i.file_name}`);
+    const clash = items.filter((i) => existing.has(i.file_name) || existing.has(stored(i.file_name))).map((i) => `${dirPath === '/' ? '' : dirPath}/${i.file_name}`);
     if (clash.length) {
       throw fail('already_exists', `${dirPath} 里已有同名项，什么都没有转存: ${clash.join('、')}`, {
         next: '要保留已有的：换一个网盘目录。要替换：先 quark rename 这些同名项留作备份，或者请用户同意后 quark rm 它们 --yes',

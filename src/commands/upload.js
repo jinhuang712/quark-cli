@@ -4,6 +4,7 @@ import { listDir, resolve } from '../session.js';
 import { isDir, normalize } from '../browse.js';
 import { asNetworkError, makeFolder, uploadFile } from '../transfer.js';
 import { fail } from '../errors.js';
+import { sameName } from '../names.js';
 
 // Expands a local path into drive-relative file entries and the folders to create.
 async function expand(local, rel, found) {
@@ -51,7 +52,7 @@ export default {
 
     const name = basename(local);
     const topPath = posix.join(base, name);
-    if ((await listDir(page, target.fid)).some((f) => f.file_name === name)) {
+    if ((await listDir(page, target.fid)).some((f) => sameName(f.file_name, name))) {
       throw fail('already_exists', `${base} 里已有 ${name}`, {
         next: `要保留网盘上的 ${topPath}：换一个网盘目录，或者换一个本地文件名再传。要替换它：先 quark rename ${topPath} 新名字 留作备份，或者请用户同意后 quark rm ${topPath} --yes`,
       });
@@ -95,14 +96,18 @@ export default {
       try {
         // The web app's upload queue is shared, so files go one at a time.
         // eslint-disable-next-line no-await-in-loop
-        const { instant } = await uploadFile(page, { fid, folderName, local: file.local, name: file.name, size: file.size });
-        uploaded.push({ path: posix.join(driveOf(info.isDirectory() ? file.dir : '.'), file.name), size: file.size, instant });
+        const { instant, name: storedName } = await uploadFile(page, { fid, folderName, local: file.local, name: file.name, size: file.size });
+        uploaded.push({ path: posix.join(driveOf(info.isDirectory() ? file.dir : '.'), storedName), size: file.size, instant });
       } catch (e) {
         throw interrupted(e);
       }
     }
 
     const data = { uploaded, count: uploaded.length, instant_count: uploaded.filter((u) => u.instant).length };
+    // Quark rewrites ' " < > in names; say so, so the caller knows which path to use afterwards.
+    if (uploaded.some((u) => /&(#39|quot|lt|gt);/.test(basename(u.path)))) {
+      data.note = '夸克把名字里的 \' " < > 存成了 &#39; &quot; &lt; &gt;，后续命令用上面输出的路径（也可以用原名，夸克会认）';
+    }
     emit({ data, lines: uploaded.map((u) => u.path), full: data });
   },
 };

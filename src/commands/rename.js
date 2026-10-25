@@ -1,5 +1,6 @@
 import { alreadyExists, isDir, join, need, normalize, parentOf } from '../ops.js';
 import { call, listDir } from '../session.js';
+import { sameName } from '../names.js';
 import { usageError } from '../errors.js';
 
 export default {
@@ -25,7 +26,7 @@ export default {
     const { parent } = parentOf(path);
     const [node, dir] = await Promise.all([need(page, path), need(page, parent)]);
     const to = join(parent, name);
-    const clash = (await listDir(page, dir.fid)).some((f) => f.file_name === name);
+    const clash = (await listDir(page, dir.fid)).some((f) => sameName(f.file_name, name));
     if (clash) throw alreadyExists(to, '没有改名');
     await call(page, 'POST', '/file/rename', { body: { fid: node.fid, file_name: name } });
     emit({

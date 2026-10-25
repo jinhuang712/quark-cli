@@ -1,6 +1,7 @@
 import { call, listDir } from './session.js';
 import { QuarkError, fail, usageError } from './errors.js';
 import { isDir, normalize } from './browse.js';
+import { sameName } from './names.js';
 
 export { isDir, normalize };
 
@@ -16,7 +17,7 @@ export async function find(page, path) {
   for (const part of splitPath(path)) {
     if (!isDir(node)) return null;
     // eslint-disable-next-line no-await-in-loop -- each step needs the previous folder's fid
-    const hit = (await listDir(page, node.fid)).find((f) => f.file_name === part);
+    const hit = (await listDir(page, node.fid)).find((f) => sameName(f.file_name, part));
     if (!hit) return null;
     node = hit;
   }
@@ -62,7 +63,7 @@ export async function ensureDir(page, path) {
   for (const part of splitPath(path)) {
     walked = join(walked, part);
     // eslint-disable-next-line no-await-in-loop -- each level depends on the previous fid
-    const hit = (await listDir(page, node.fid)).find((f) => f.file_name === part);
+    const hit = (await listDir(page, node.fid)).find((f) => sameName(f.file_name, part));
     if (hit && !isDir(hit)) {
       throw fail('already_exists', `${walked} 是文件，不能在它的位置建文件夹`, {
         next: `换个名字，或者先 quark rename ${walked} 新名字`,

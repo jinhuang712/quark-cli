@@ -48,7 +48,7 @@ quark <命令> [参数] [选项]
 | 退出码 | 含义 | 错误码 |
 | --- | --- | --- |
 | 0 | 成功 | |
-| 1 | 其他错误 | `error`、`already_logged_in`、`chrome_missing`、`login_cancelled`、`login_timeout`、`not_a_folder`、`already_exists`、`no_space`、`network` |
+| 1 | 其他错误 | `error`、`already_logged_in`、`chrome_missing`、`login_cancelled`、`login_timeout`、`not_a_folder`、`invalid_name`、`already_exists`、`no_space`、`network` |
 | 2 | 命令用法不对 | `usage`、`unknown_command`、`confirmation_required` |
 | 3 | 需要登录 | `not_logged_in` |
 | 4 | 路径或链接找不到 | `not_found`、`local_not_found`、`share_gone`、`bad_code` |
@@ -180,7 +180,7 @@ quark <命令> [参数] [选项]
 - 恰好 2 个参数。文件一个接一个传，进度在 stderr。
 - 网盘目录里已有同名项：`already_exists`（1），上传前就失败，什么都不传。
 - 网盘目录不存在：`not_found`（4）。本地路径不存在：`local_not_found`（4）。
-- 输出：`uploaded`（数组，每项 `path`、`size`、`instant`）、`count`、`instant_count`。`instant` 为 `true` 表示秒传。
+- 输出：`uploaded`（数组，每项 `path`、`size`、`instant`）、`count`、`instant_count`。`instant` 为 `true` 表示秒传。名字里有 `' " < >` 时，`path` 是夸克实际存的名字（`&#39;` `&quot;` `&lt;` `&gt;`），输出多一个 `note`。
 - 传到一半失败：错误里列出已经传好的文件，`next` 说明先给用户看，再 `quark rm <目录> --yes` 清掉新建的目录后重试。
 
 ## `quark download <网盘路径> <本地目录>`

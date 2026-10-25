@@ -1,5 +1,6 @@
 import { alreadyExists, callMaybeTask, find, isDir, join, missing, need, normalize, parentOf } from '../ops.js';
 import { listDir } from '../session.js';
+import { sameName } from '../names.js';
 import { fail, usageError } from '../errors.js';
 
 export default {
@@ -29,7 +30,7 @@ export default {
       throw usageError(`不能把 ${src} 移进它自己里面`, '换一个目标文件夹');
     }
     const to = join(dest, name);
-    const clash = (await listDir(page, target.fid)).some((f) => f.file_name === name);
+    const clash = (await listDir(page, target.fid)).some((f) => sameName(f.file_name, name));
     if (clash) throw alreadyExists(to, '没有移动任何东西');
     await callMaybeTask(page, 'POST', '/file/move', {
       action_type: 1,

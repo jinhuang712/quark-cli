@@ -1,7 +1,8 @@
 import { chromium } from 'playwright-core';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { QuarkError, notFound, refused } from './errors.js';
+import { QuarkError, fail, notFound, refused } from './errors.js';
+import { FORBIDDEN, sameName } from './names.js';
 
 const PROFILE = process.env.QUARK_PROFILE || join(homedir(), '.quark-cli', 'profile');
 // Chrome in a non-standard location.
@@ -34,6 +35,12 @@ export async function call(page, method, path, { query = {}, body } = {}) {
   );
   if (res.status !== 200 || res.code !== 0) {
     const message = `${path}: ${res.message || JSON.stringify(res)}`;
+    if (/bad file name/.test(res.message ?? '')) {
+      throw fail('invalid_name', '夸克不接受这个名字', {
+        next: `名字里不能有 ${FORBIDDEN}，换一个名字`,
+        detail: res.message.trim(),
+      });
+    }
     // Quark's own refusals (restricted account, risk control) get their own exit code.
     throw Object.assign(/限制|风控|违规|封禁/.test(res.message ?? '') ? refused(message) : new QuarkError(message), {
       apiCode: res.code,
@@ -73,7 +80,7 @@ export async function resolve(page, path) {
   if (folder) return folder;
   // Not a folder: it may be a file, found by listing its parent folder.
   const parent = parts.length === 1 ? { fid: '0' } : await folderAt(parts.slice(0, -1));
-  const hit = parent && (await listDir(page, parent.fid)).find((f) => f.file_name === parts.at(-1));
+  const hit = parent && (await listDir(page, parent.fid)).find((f) => sameName(f.file_name, parts.at(-1)));
   if (hit) return hit;
   // Missing: point `next` at the deepest folder that does exist.
   let depth = parts.length - 1;

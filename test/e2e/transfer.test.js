@@ -44,6 +44,37 @@ describe('e2e transfer', { timeout: 600_000 }, () => {
       assert.deepEqual(await s.names(`${R}/up`), ['a.bin', 'copy-of-a.bin']);
     });
 
+    test("Quark stores ' \" < > as entities: the upload succeeds, reports the stored path, and the original name still finds it", async () => {
+      await s.q('mkdir', `${R}/quotes`);
+      const f = s.localFile(`it's "q" <a>.txt`, `quotes ${stamp}\n`);
+      const out = await s.json('upload', f, `${R}/quotes`);
+      const stored = `${R}/quotes/it&#39;s &quot;q&quot; &lt;a&gt;.txt`;
+      assert.deepEqual(out.uploaded.map((u) => u.path), [stored]);
+      assert.match(out.note, /&#39;/);
+      // the same local file again is a clash, found through either spelling
+      const again = await s.q('upload', f, `${R}/quotes`);
+      assert.equal(again.exit, 1);
+      assert.equal(s.err(again).code, 'already_exists');
+      // lookups take the name as typed
+      const info = await s.q('info', `${R}/quotes/it's "q" <a>.txt`, '--raw');
+      assert.equal(info.exit, 0, info.stderr);
+    });
+
+    test('a folder name Quark refuses is invalid_name (exit 1) and says which characters are not allowed', async () => {
+      const res = await s.q('mkdir', `${R}/up/bad"name`);
+      assert.equal(res.exit, 1);
+      const e = s.err(res);
+      assert.equal(e.code, 'invalid_name');
+      assert.match(e.next, /不能有/);
+    });
+
+    test('mkdir with an apostrophe is idempotent', async () => {
+      const first = await s.json('mkdir', `${R}/up/o'neil`);
+      assert.equal(first.changed, true);
+      const second = await s.json('mkdir', `${R}/up/o'neil`);
+      assert.equal(second.changed, false);
+    });
+
     test('--raw prints the drive paths', async () => {
       const f = s.localFile('raw.txt', `raw ${stamp}\n`);
       const res = await s.q('upload', f, `${R}/up`, '--raw');

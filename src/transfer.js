@@ -4,6 +4,7 @@ import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { call, listDir } from './session.js';
 import { QuarkError, fail, refused } from './errors.js';
+import { sameName, stored } from './names.js';
 
 // Creates one folder under `pdirFid` and returns its fid.
 export async function makeFolder(page, pdirFid, name) {
@@ -63,11 +64,12 @@ export async function uploadFile(page, { fid, folderName, local, name, size }) {
     while (Date.now() < deadline) {
       // eslint-disable-next-line no-await-in-loop
       await page.waitForTimeout(1000);
-      const failure = preError(watch.seen.get(name), name);
+      const failure = preError(watch.seen.get(name) ?? watch.seen.get(stored(name)), name);
       if (failure) throw failure;
       // eslint-disable-next-line no-await-in-loop
-      const hit = (await listDir(page, fid)).find((f) => f.file_name === name && f.size === size);
-      if (hit) return { instant: watch.seen.get('<hash>')?.data?.finish === true };
+      const hit = (await listDir(page, fid)).find((f) => sameName(f.file_name, name) && f.size === size);
+      // `name` is what Quark ended up storing, which differs from the local name for ' " < >.
+      if (hit) return { instant: watch.seen.get('<hash>')?.data?.finish === true, name: hit.file_name };
     }
     throw fail('network', `等了很久 ${name} 还没传完`, { next: '检查网络后重试' });
   } catch (e) {

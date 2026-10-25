@@ -1,13 +1,20 @@
-import { listDir, resolve } from '../session.js';
+import { listDir } from '../session.js';
 import { row } from '../format.js';
+import { byDisplayOrder, entry, isDir, normalize, resolveOrFail } from '../browse.js';
 
 export default {
   name: 'ls',
   usage: 'ls [path]',
   summary: 'list a folder',
   async run({ page, args, out }) {
-    const node = await resolve(page, args[0] ?? '/');
-    const files = node.file_type === 0 || node.dir ? await listDir(page, node.fid) : [node];
-    out(files.map((f) => row(f)).join('\n'), files);
+    const path = normalize(args[0] ?? '/');
+    const node = await resolveOrFail(page, path);
+    const folder = isDir(node);
+    const files = folder ? (await listDir(page, node.fid)).toSorted(byDisplayOrder) : [node];
+    const pathOf = (f) => (folder ? `${path === '/' ? '' : path}/${f.file_name}` : path);
+    out(
+      files.map((f) => row(f)).join('\n'),
+      files.map((f) => entry(f, pathOf(f))),
+    );
   },
 };

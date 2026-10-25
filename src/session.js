@@ -1,6 +1,7 @@
 import { chromium } from 'playwright-core';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { QuarkError, notFound, refused } from './errors.js';
 
 const PROFILE = process.env.QUARK_PROFILE || join(homedir(), '.quark-cli', 'profile');
 const HOME = 'https://pan.quark.cn/list';
@@ -30,7 +31,11 @@ export async function call(page, method, path, { query = {}, body } = {}) {
     { url: `${API}${path}?${qs}`, verb: method, payload: body },
   );
   if (res.status !== 200 || res.code !== 0) {
-    throw new Error(`${path}: ${res.message || JSON.stringify(res)}`);
+    const message = `${path}: ${res.message || JSON.stringify(res)}`;
+    // Quark's own refusals (restricted account, risk control) get their own exit code.
+    throw Object.assign(/限制|风控|违规|封禁/.test(res.message ?? '') ? refused(message) : new QuarkError(message), {
+      apiCode: res.code,
+    });
   }
   return res;
 }
@@ -61,7 +66,7 @@ export async function resolve(page, path) {
   let node = { fid, file_name: '/', dir: true };
   for (const part of path.split('/').filter(Boolean)) {
     const hit = (await listDir(page, fid)).find((f) => f.file_name === part);
-    if (!hit) throw new Error(`not found: ${path}`);
+    if (!hit) throw notFound(`not found: /${path.split('/').filter(Boolean).join('/')}; check the path with \`quark ls\``);
     fid = hit.fid;
     node = hit;
   }

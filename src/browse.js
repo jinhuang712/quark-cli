@@ -1,22 +1,12 @@
 import { call, resolve } from './session.js';
-import { notFound } from './errors.js';
 
 export const isDir = (file) => file.dir ?? file.file_type === 0;
 
 // "/a//b/" -> "/a/b"; the root is "/".
 export const normalize = (path) => `/${path.split('/').filter(Boolean).join('/')}`;
 
-// session.resolve() throws a plain Error; map it to the "not found" exit code.
-export async function resolveOrFail(page, path) {
-  try {
-    return await resolve(page, path);
-  } catch (e) {
-    if (e.message.startsWith('not found:')) {
-      throw notFound(`not found: ${normalize(path)}; check the path with \`quark ls\``);
-    }
-    throw e;
-  }
-}
+// session.resolve() already throws the "not found" error (exit 4).
+export const resolveOrFail = resolve;
 
 // Machine-readable shape shared by ls, search and info.
 export function entry(file, path) {

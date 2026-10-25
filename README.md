@@ -49,10 +49,20 @@ quark search 简历
 
 登录态保存在 `~/.quark-cli/profile`。设置环境变量 `QUARK_PROFILE` 可以换位置。登录态等于账号密码，不要提交到 git，也不要拷给别人。
 
+## 测试
+
+```
+npm test               # 单元测试，离线，约 10 秒
+npm run test:e2e       # 端到端，用你的登录态副本操作真实网盘，约 3 分钟
+npm run test:failures  # 失败路径：模拟扫码、登录超时、没装 Chrome、传输中途断网
+```
+
+后两个需要已经登录过。它们用登录态的副本，不碰原件；网盘上的写操作只在带时间戳的 `quark-cli-test-*` 文件夹里，测完自动删。没法自动测的见 [TODO.md](TODO.md)。
+
 ## 已知限制
 
 - 只能用 Google Chrome，不支持 Edge 和 Firefox。Chrome 装在非标准位置时，设置环境变量 `QUARK_CHROME_PATH` 指向它的可执行文件。
-- 每条命令都会启动一次 Chrome，要几秒；连续发很多条命令会慢。
+- 每条命令都会启动一次 Chrome，每条约 1.5 秒（`--help` 不启动，约 0.15 秒）。
 - `download` 只能下载单个文件，没有断点续传；`upload` 也没有断点续传。
 - `save`（转存别人的分享）还没有成功转存过的测试。
 - 靠夸克网页版的接口工作，夸克改版后可能要跟着改。

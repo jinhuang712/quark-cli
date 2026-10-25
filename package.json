@@ -6,6 +6,11 @@
   "bin": {
     "quark": "bin/quark.js"
   },
+  "scripts": {
+    "test": "node --test test/unit/*.test.js",
+    "test:e2e": "node --test test/e2e/*.test.js",
+    "test:failures": "node --test test/failures/*.test.js"
+  },
   "license": "MIT",
   "engines": {
     "node": ">=20"

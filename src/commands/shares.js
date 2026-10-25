@@ -1,4 +1,4 @@
-import { time } from '../format.js';
+import { isoTime } from '../format.js';
 import { listShares, shareLink } from '../shares.js';
 
 const DAY = 86400000;
@@ -14,18 +14,22 @@ function remaining(s) {
 export default {
   name: 'shares',
   usage: 'shares',
-  summary: 'list my share links',
-  async run({ page, out }) {
-    const items = (await listShares(page)).map((s) => ({
+  summary: '列出我创建的所有分享',
+  group: 'share',
+  args: [],
+  examples: ['quark shares', 'quark shares --raw'],
+  effect: { changes: false },
+  errors: [],
+  related: ['share', 'unshare'],
+  async run({ page, emit }) {
+    const shares = await listShares(page);
+    const items = shares.map((s) => ({
       name: s.title,
       link: shareLink(s),
-      code: s.passcode ?? null,
-      created: s.created_at,
+      ...(s.passcode && { code: s.passcode }),
+      created: isoTime(s.created_at),
       remaining: remaining(s),
     }));
-    const human = items
-      .map((i) => `${i.name}\t${i.link}${i.code ? ` (${i.code})` : ''}\t${time(i.created)}\t${i.remaining}`)
-      .join('\n');
-    out(human, items);
+    emit({ data: items, lines: items.map((i) => i.link), full: shares });
   },
 };

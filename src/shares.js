@@ -1,5 +1,5 @@
 import { call } from './session.js';
-import { QuarkError, notFound, refused } from './errors.js';
+import { QuarkError, fail, refused } from './errors.js';
 
 const API = 'https://drive-pc.quark.cn/1/clouddrive';
 
@@ -42,14 +42,14 @@ export async function waitTask(page, taskId, { tries = 60 } = {}) {
     // Polling is inherently sequential.
     // eslint-disable-next-line no-await-in-loop
     const res = await raw(page, 'GET', '/task', { query: { task_id: taskId, retry_index: i } });
-    if (!ok(res)) throw new QuarkError(`task: ${res.message || JSON.stringify(res)}`);
+    if (!ok(res)) throw new QuarkError('查询夸克任务状态失败', { detail: res.message || JSON.stringify(res), next: '稍后重试' });
     const t = res.data;
     if (t.status === 2) return t;
-    if (t.status > 2) throw new QuarkError(`task failed: ${t.message || JSON.stringify(t)}`);
+    if (t.status > 2) throw new QuarkError('夸克任务失败', { detail: t.message || JSON.stringify(t), next: '稍后重试' });
     // eslint-disable-next-line no-await-in-loop
     await sleep(500);
   }
-  throw new QuarkError('task did not finish in time');
+  throw new QuarkError('夸克任务超时没有完成', { next: '稍后重试' });
 }
 
 export async function listShares(page) {
@@ -66,15 +66,22 @@ export async function listShares(page) {
 
 export const shareLink = (s) => s.share_url ?? `https://pan.quark.cn/s/${s.pwd_id}`;
 
-// Quark rejections (restricted account, risk control) surface as exit 5 with the message verbatim.
-export function rejection(path, res) {
-  return refused(`${path}: ${res.message || JSON.stringify(res)}`);
+// Quark rejections (restricted account, risk control) surface as exit 5, Quark's text kept in `detail`.
+export function rejection(what, res, extra = {}) {
+  return refused(`夸克拒绝了请求（${what}）`, { detail: res.message || JSON.stringify(res), ...extra });
 }
 
-// Maps sharepage/token failures to exit-4 messages.
-export function tokenError(res) {
+// Maps sharepage/token failures to share_gone / bad_code (exit 4), anything else to refused.
+export function tokenError(res, link, { hasCode = false } = {}) {
   const msg = res.message || JSON.stringify(res);
-  if (res.status === 404 || /取消|不存在|失效|过期|违规/.test(msg)) return notFound(`share unavailable: ${msg}`);
-  if (/提取码/.test(msg)) return notFound(`wrong or missing passcode: ${msg}`);
+  if (res.status === 404 || /取消|不存在|失效|过期|违规/.test(msg)) {
+    return fail('share_gone', `分享链接已失效: ${link}`, { next: '请对方重新分享', detail: msg });
+  }
+  if (/提取码/.test(msg)) {
+    return fail('bad_code', hasCode ? `提取码不对: ${link}` : `这条分享需要提取码: ${link}`, {
+      next: '用 --code 传入正确的提取码',
+      detail: msg,
+    });
+  }
   return rejection('share/sharepage/token', res);
 }

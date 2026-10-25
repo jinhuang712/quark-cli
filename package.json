@@ -2,21 +2,21 @@
   "name": "quark-cli",
   "version": "0.0.0",
   "description": "Command line for Quark Drive (夸克网盘) driven through its web app",
-  "type": "module",
+  "license": "MIT",
   "bin": {
     "quark": "bin/quark.js"
   },
+  "type": "module",
   "scripts": {
     "test": "node --test test/unit/*.test.js",
     "test:e2e": "node --test test/e2e/*.test.js",
     "test:failures": "node --test test/failures/*.test.js"
   },
-  "license": "MIT",
-  "engines": {
-    "node": ">=20"
-  },
   "dependencies": {
     "playwright-core": "^1.55.0",
     "yaml": "^2.9.1"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

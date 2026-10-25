@@ -30,8 +30,8 @@ export const CODES = {
 export class QuarkError extends Error {
   constructor(message, opts = {}) {
     super(message);
-    const o = typeof opts === 'number' ? { exit: opts } : opts;
-    this.code = o.code ?? Object.keys(CODES).find((k) => CODES[k] === o.exit) ?? 'error';
+    const o = typeof opts === "number" ? { exit: opts } : opts;
+    this.code = o.code ?? Object.keys(CODES).find((k) => CODES[k] === o.exit) ?? "error";
     this.exit = o.exit ?? CODES[this.code] ?? EXIT.error;
     this.next = o.next;
     this.detail = o.detail;
@@ -42,8 +42,11 @@ export class QuarkError extends Error {
 // fail('not_found', 'no such path', { next: 'run quark ls' })
 export const fail = (code, message, extra = {}) => new QuarkError(message, { code, ...extra });
 
-export const usageError = (m, next) => fail('usage', m, { next });
+export const usageError = (m, next) => fail("usage", m, { next });
 export const loginError = () =>
-  fail('not_logged_in', '没有登录，或登录已过期', { next: '请用户运行 `quark login` 扫码登录，然后重试' });
-export const notFound = (m, next) => fail('not_found', m, { next });
-export const refused = (m, extra) => fail('refused', m, { next: '请用户确认账号状态；不要重试', ...extra });
+  fail("not_logged_in", "没有登录，或登录已过期", {
+    next: "请用户运行 `quark login` 扫码登录，然后重试",
+  });
+export const notFound = (m, next) => fail("not_found", m, { next });
+export const refused = (m, extra) =>
+  fail("refused", m, { next: "请用户确认账号状态；不要重试", ...extra });

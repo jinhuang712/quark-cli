@@ -1,21 +1,22 @@
-import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { fail } from './errors.js';
+import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fail } from "./errors.js";
 
 const CHROME_PATHS = [
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
-  '/Applications/Chromium.app/Contents/MacOS/Chromium',
-  '/usr/bin/google-chrome',
-  '/usr/bin/google-chrome-stable',
-  '/usr/bin/chromium',
-  '/usr/bin/microsoft-edge',
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+  "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  "/usr/bin/google-chrome",
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/chromium",
+  "/usr/bin/microsoft-edge",
 ];
 
 // QUARK_CHROME_PATH wins, the same as for the hidden page in session.js.
-export const findChrome = () => process.env.QUARK_CHROME_PATH || CHROME_PATHS.find((p) => existsSync(p));
+export const findChrome = () =>
+  process.env.QUARK_CHROME_PATH || CHROME_PATHS.find((p) => existsSync(p));
 
 const qrPage = `<!doctype html>
 <html lang="zh-CN" translate="no"><head><meta charset="utf-8"><meta name="google" content="notranslate"><title>夸克网盘登录</title>
@@ -35,35 +36,38 @@ const qrPage = `<!doctype html>
 // `closed` resolves when the window goes away; `update(png)` swaps the QR picture.
 export function openQrWindow(png) {
   const chrome = findChrome();
-  if (!chrome) throw fail('chrome_missing', '本机没有找到 Chrome，没法弹出二维码窗口', { next: '请用户安装 Google Chrome；已安装在非标准位置时，设置环境变量 QUARK_CHROME_PATH 指向它' });
-  const dir = mkdtempSync(join(tmpdir(), 'quark-qr-'));
-  mkdirSync(join(dir, 'profile'));
+  if (!chrome)
+    throw fail("chrome_missing", "本机没有找到 Chrome，没法弹出二维码窗口", {
+      next: "请用户安装 Google Chrome；已安装在非标准位置时，设置环境变量 QUARK_CHROME_PATH 指向它",
+    });
+  const dir = mkdtempSync(join(tmpdir(), "quark-qr-"));
+  mkdirSync(join(dir, "profile"));
   let gone = false;
   const write = (buf) => {
-    writeFileSync(join(dir, 'qr.tmp'), buf);
-    renameSync(join(dir, 'qr.tmp'), join(dir, 'qr.png'));
+    writeFileSync(join(dir, "qr.tmp"), buf);
+    renameSync(join(dir, "qr.tmp"), join(dir, "qr.png"));
   };
   // After the window is closed its temp dir is gone; a late update is dropped, not an error.
   const update = (buf) => {
     if (!gone) write(buf);
   };
   write(png);
-  writeFileSync(join(dir, 'index.html'), qrPage);
+  writeFileSync(join(dir, "index.html"), qrPage);
   const proc = spawn(
     chrome,
     [
-      `--app=file://${join(dir, 'index.html')}`,
-      `--user-data-dir=${join(dir, 'profile')}`,
-      '--window-size=340,500',
-      '--lang=zh-CN',
-      '--disable-features=Translate,TranslateUI',
-      '--no-first-run',
-      '--no-default-browser-check',
-      '--disable-extensions',
+      `--app=file://${join(dir, "index.html")}`,
+      `--user-data-dir=${join(dir, "profile")}`,
+      "--window-size=340,500",
+      "--lang=zh-CN",
+      "--disable-features=Translate,TranslateUI",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-extensions",
     ],
-    { stdio: 'ignore' },
+    { stdio: "ignore" },
   );
-  const closed = new Promise((resolve) => proc.once('exit', resolve)).then(() => {
+  const closed = new Promise((resolve) => proc.once("exit", resolve)).then(() => {
     gone = true;
     rmSync(dir, { recursive: true, force: true });
   });

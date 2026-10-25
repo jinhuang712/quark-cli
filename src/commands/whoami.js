@@ -1,20 +1,20 @@
-import { nickname, member } from '../account.js';
-import { isoTime, size } from '../format.js';
+import { nickname, member } from "../account.js";
+import { isoTime, size } from "../format.js";
 
 export default {
-  name: 'whoami',
-  usage: 'whoami',
-  summary: '显示账号名、已用和总容量、是否会员',
-  group: 'account',
+  name: "whoami",
+  usage: "whoami",
+  summary: "显示账号名、已用和总容量、是否会员",
+  group: "account",
   auth: true,
   args: [],
-  examples: ['quark whoami', 'quark whoami --json'],
+  examples: ["quark whoami", "quark whoami --json"],
   effect: { changes: false },
-  errors: ['not_logged_in'],
-  related: ['login', 'logout'],
+  errors: ["not_logged_in"],
+  related: ["login", "logout"],
   async run({ page, emit }) {
     const [name, m] = await Promise.all([nickname(page), member(page)]);
-    const isMember = Boolean(m.member_type) && m.member_type !== 'NORMAL';
+    const isMember = Boolean(m.member_type) && m.member_type !== "NORMAL";
     emit({
       data: {
         name,

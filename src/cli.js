@@ -1,12 +1,12 @@
-import { parseArgs } from 'node:util';
-import { readdirSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { open, isLoggedIn, openError } from './session.js';
-import { EXIT, QuarkError, fail, loginError, usageError } from './errors.js';
-import { pickFormat, render, renderError } from './output.js';
-import { commandHelp, nearest, topHelp } from './help.js';
+import { parseArgs } from "node:util";
+import { readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { open, isLoggedIn, openError } from "./session.js";
+import { EXIT, QuarkError, fail, loginError, usageError } from "./errors.js";
+import { pickFormat, render, renderError } from "./output.js";
+import { commandHelp, nearest, topHelp } from "./help.js";
 
-const dir = fileURLToPath(new URL('./commands/', import.meta.url));
+const dir = fileURLToPath(new URL("./commands/", import.meta.url));
 
 // A command module default-exports (see help.js for the help metadata):
 //   { name, summary, usage, options?, auth?: false, run({ page, context, args, flags, emit, progress }) }
@@ -16,26 +16,32 @@ const dir = fileURLToPath(new URL('./commands/', import.meta.url));
 //   full   the complete result, printed instead of `data` under --full
 async function load() {
   const all = {};
-  const files = readdirSync(dir).filter((n) => n.endsWith('.js'));
-  for (const c of await Promise.all(files.map((f) => import(`./commands/${f}`).then((m) => m.default)))) {
+  const files = readdirSync(dir).filter((n) => n.endsWith(".js"));
+  for (const c of await Promise.all(
+    files.map((f) => import(`./commands/${f}`).then((m) => m.default)),
+  )) {
     all[c.name] = c;
   }
   return all;
 }
 
 const GLOBAL = {
-  json: { type: 'boolean' },
-  markdown: { type: 'boolean' },
-  raw: { type: 'boolean' },
-  full: { type: 'boolean' },
-  help: { type: 'boolean', short: 'h' },
+  json: { type: "boolean" },
+  markdown: { type: "boolean" },
+  raw: { type: "boolean" },
+  full: { type: "boolean" },
+  help: { type: "boolean", short: "h" },
 };
 
-const isHelp = (a) => a === '--help' || a === '-h';
+const isHelp = (a) => a === "--help" || a === "-h";
 
 function parse(cmd, rest) {
   try {
-    return parseArgs({ args: rest, allowPositionals: true, options: { ...GLOBAL, ...cmd.options } });
+    return parseArgs({
+      args: rest,
+      allowPositionals: true,
+      options: { ...GLOBAL, ...cmd.options },
+    });
   } catch (e) {
     const dash = /Unknown option '(-[^']*)'/.exec(e.message);
     throw usageError(
@@ -50,15 +56,15 @@ function parse(cmd, rest) {
 export async function main(argv) {
   const all = await load();
   const [name, ...rest] = argv;
-  if (!name || isHelp(name) || name === 'help') {
+  if (!name || isHelp(name) || name === "help") {
     console.log(topHelp(all));
     return EXIT.ok;
   }
   const cmd = all[name];
   if (!cmd) {
     const guess = nearest(name, Object.keys(all));
-    throw fail('unknown_command', `没有这个命令: ${name}`, {
-      next: `${guess ? `是不是想用 quark ${guess}？` : ''}运行 quark --help 看所有命令`.trim(),
+    throw fail("unknown_command", `没有这个命令: ${name}`, {
+      next: `${guess ? `是不是想用 quark ${guess}？` : ""}运行 quark --help 看所有命令`.trim(),
     });
   }
   const { values: flags, positionals: args } = parse(cmd, rest);
@@ -89,7 +95,7 @@ export async function main(argv) {
       await context.close();
     }
   }
-  const text = result ? render(format, result, { full: flags.full }) : '';
+  const text = result ? render(format, result, { full: flags.full }) : "";
   if (text) console.log(text);
   return EXIT.ok;
 }
@@ -99,8 +105,17 @@ export async function run(argv) {
     process.exitCode = await main(argv);
   } catch (e) {
     const err = e instanceof QuarkError ? e : new QuarkError(e.message);
-    const format = ['--json', '--markdown'].find((f) => argv.includes(f))?.slice(2) ?? 'yaml';
-    console.error(renderError(format, { error: err.message, code: err.code, exit: err.exit, next: err.next, detail: err.detail, ...err.extra }));
+    const format = ["--json", "--markdown"].find((f) => argv.includes(f))?.slice(2) ?? "yaml";
+    console.error(
+      renderError(format, {
+        error: err.message,
+        code: err.code,
+        exit: err.exit,
+        next: err.next,
+        detail: err.detail,
+        ...err.extra,
+      }),
+    );
     process.exitCode = err.exit;
   }
 }

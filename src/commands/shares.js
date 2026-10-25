@@ -1,26 +1,26 @@
-import { isoTime } from '../format.js';
-import { listShares, shareLink } from '../shares.js';
+import { isoTime } from "../format.js";
+import { listShares, shareLink } from "../shares.js";
 
 const DAY = 86400000;
 const HOUR = 3600000;
 
 function remaining(s) {
-  if (s.expired_type === 1) return 'permanent';
+  if (s.expired_type === 1) return "permanent";
   const left = s.expired_left ?? s.expired_at - Date.now();
-  if (left <= 0) return 'expired';
+  if (left <= 0) return "expired";
   return left >= DAY ? `${Math.floor(left / DAY)}d` : `${Math.max(1, Math.floor(left / HOUR))}h`;
 }
 
 export default {
-  name: 'shares',
-  usage: 'shares',
-  summary: '列出我创建的所有分享',
-  group: 'share',
+  name: "shares",
+  usage: "shares",
+  summary: "列出我创建的所有分享",
+  group: "share",
   args: [],
-  examples: ['quark shares', 'quark shares --raw'],
+  examples: ["quark shares", "quark shares --raw"],
   effect: { changes: false },
   errors: [],
-  related: ['share', 'unshare'],
+  related: ["share", "unshare"],
   async run({ page, emit }) {
     const shares = await listShares(page);
     const items = shares.map((s) => ({

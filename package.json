@@ -1,6 +1,6 @@
 {
   "name": "quark-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Command line for Quark Drive (夸克网盘) driven through its web app",
   "type": "module",
   "bin": {

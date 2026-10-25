@@ -67,7 +67,7 @@
 | 固定退出码 | 未登录、没找到、被限制各有固定的退出码 | F18 | ✅ |
 | 帮助 | `quark --help` 和 `quark <命令> --help` 讲清楚怎么用 | F19 | ✅ |
 | 错误信息 | 每个错误说清楚出了什么事、错误码、下一步 | F20 | ✅ |
-| agent skill | 随仓库附一份教 agent 使用的 skill | F21 | ⬜ |
+| agent skill | 随仓库附一份教 agent 使用的 skill | F21 | ✅ |
 
 ## 账号
 
@@ -347,9 +347,11 @@ next: 用 quark ls /WORK 看这个目录里有什么
 
 Settings: 无。
 
-### F21 — agent skill ⬜
+### F21 — agent skill ✅
 
-仓库里附一份 skill，教 agent 使用 `quark`：命令清单、输出格式、错误码，以及哪些操作要先问用户（`rm`、永久有效的 `share`、`logout`）。最后一个做，等命令的行为都定下来以后。
+仓库里附一份 skill（`skills/quark-cli/SKILL.md`），教 agent 使用 `quark`：命令清单、输出格式、错误码怎么处理，以及哪些操作要先问用户（`rm`、永久有效的 `share`、`logout`）。把它链接到 `~/.claude/skills/quark-cli` 后，agent 遇到网盘相关的请求会读到它。
+
+Settings: 无。
 
 ## When something fails
 

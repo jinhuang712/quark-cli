@@ -43,7 +43,7 @@ export default {
         `没有 --yes，什么都没删。将要删除 ${paths.join('、')}，共 ${folders} 个文件夹、${files} 个文件`,
         {
           next: '把删除计划给用户看，用户同意后加 --yes 重新运行同一条命令',
-          detail: JSON.stringify({ paths, folders, files }),
+          extra: { plan: { paths, folders, files } },
         },
       );
     }

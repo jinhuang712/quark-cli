@@ -23,7 +23,8 @@ export const CODES = {
   refused: EXIT.refused,
 };
 
-// opts is an exit code (number) or { code, exit, next, detail }.
+// opts is an exit code (number) or { code, exit, next, detail, extra }.
+// `extra` holds structured fields printed beside the standard ones, such as rm's `plan`.
 export class QuarkError extends Error {
   constructor(message, opts = {}) {
     super(message);
@@ -32,6 +33,7 @@ export class QuarkError extends Error {
     this.exit = o.exit ?? CODES[this.code] ?? EXIT.error;
     this.next = o.next;
     this.detail = o.detail;
+    this.extra = o.extra;
   }
 }
 

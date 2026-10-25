@@ -97,7 +97,7 @@ export async function run(argv) {
   } catch (e) {
     const err = e instanceof QuarkError ? e : new QuarkError(e.message);
     const format = ['--json', '--markdown'].find((f) => argv.includes(f))?.slice(2) ?? 'yaml';
-    console.error(renderError(format, { error: err.message, code: err.code, exit: err.exit, next: err.next, detail: err.detail }));
+    console.error(renderError(format, { error: err.message, code: err.code, exit: err.exit, next: err.next, detail: err.detail, ...err.extra }));
     process.exitCode = err.exit;
   }
 }

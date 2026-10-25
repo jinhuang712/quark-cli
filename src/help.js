@@ -44,10 +44,11 @@ const PRINCIPLE = `每个命令只做一件事：不自动建目录，不自动�
 const mark = (cmd) => (cmd.effect?.changes ? '*' : ' ');
 
 export function topHelp(all) {
+  const width = Math.max(...Object.values(all).map((c) => c.usage.length)) + 2;
   const byGroup = GROUPS.map(([key, title]) => {
     const rows = Object.values(all)
       .filter((c) => c.group === key)
-      .map((c) => `  ${mark(c)} ${c.usage.padEnd(34)}${c.summary}`);
+      .map((c) => `  ${mark(c)} ${c.usage.padEnd(width)}${c.summary}`);
     return `${title}:\n${rows.join('\n')}`;
   });
   return [

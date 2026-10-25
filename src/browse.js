@@ -9,21 +9,6 @@ export const normalize = (path) => `/${path.split('/').filter(Boolean).join('/')
 // session.resolve() already throws the "not found" error (exit 4).
 export const resolveOrFail = resolve;
 
-// Machine-readable shape shared by ls, search and info.
-export function entry(file, path) {
-  const iso = (ms) => (ms ? new Date(ms).toISOString() : null);
-  return {
-    name: file.file_name,
-    ...(path === undefined ? {} : { path }),
-    type: isDir(file) ? 'folder' : 'file',
-    size: isDir(file) ? null : file.size,
-    items: isDir(file) ? (file.include_items ?? null) : null,
-    created: iso(file.l_created_at),
-    updated: iso(file.l_updated_at),
-    fid: file.fid,
-  };
-}
-
 // The curated fields `ls` and `search` print by default (FEATURES.md → F17).
 export const brief = (file, path) => ({
   name: file.file_name,

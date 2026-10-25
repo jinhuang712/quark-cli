@@ -1,28 +1,36 @@
 import { call } from '../session.js';
-import { row } from '../format.js';
 import { usageError } from '../errors.js';
-import { byDisplayOrder, entry, fullPaths } from '../browse.js';
+import { brief, byDisplayOrder, fullPaths } from '../browse.js';
 
 const LIMIT = 50;
 
 export default {
   name: 'search',
   usage: 'search <keyword>',
-  summary: 'find files and folders by name',
-  async run({ page, args, flags, out }) {
+  summary: '在整个网盘里按名字找文件和文件夹，最多 50 条',
+  group: 'browse',
+  args: [['<keyword>', '名字里要含有的关键词']],
+  examples: ['quark search 简历', 'quark search 简历 --raw | xargs quark info'],
+  effect: { changes: false },
+  errors: [],
+  related: ['ls', 'info'],
+  async run({ page, args, emit }) {
     const keyword = args.join(' ').trim();
-    if (!keyword) throw usageError('missing keyword\nusage: quark search <keyword>');
+    if (!keyword) throw usageError('缺少关键词', '用法: quark search <keyword>');
     const res = await call(page, 'GET', '/file/search', {
       query: { q: keyword, _page: 1, _size: LIMIT, _fetch_total: 1, _sort: 'file_type:asc,updated_at:desc' },
     });
     const files = res.data.list.slice(0, LIMIT).toSorted(byDisplayOrder);
     const total = res.metadata?._total ?? files.length;
-    if (!files.length) return out('没有找到', []);
-
-    const paths = await fullPaths(page, files);
-    const hint = total > files.length ? `共 ${total} 条结果，只列出前 ${files.length} 条；请换更具体的关键词` : null;
-    const lines = files.map((f) => `${row(f)}\t${paths.get(f.fid)}`);
-    if (hint && flags.json) console.error(hint);
-    return out([...lines, ...(hint ? [hint] : [])].join('\n'), files.map((f) => entry(f, paths.get(f.fid))));
+    const paths = files.length ? await fullPaths(page, files) : new Map();
+    emit({
+      data: {
+        total,
+        truncated: total > files.length,
+        results: files.map((f) => brief(f, paths.get(f.fid))),
+      },
+      lines: files.map((f) => paths.get(f.fid)),
+      full: { total, truncated: total > files.length, results: files },
+    });
   },
 };

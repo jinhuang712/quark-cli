@@ -35,7 +35,8 @@ quark <命令> [参数] [选项]
 | stdout 和 stderr | 结果写 stdout；进度和提示写 stderr |
 | 错误输出 | stderr 输出 `error`、`code`、`exit`、`next`，有的还有 `detail`（夸克的原话）和结构化字段（`rm` 的 `plan`）。格式跟随 `--json`、`--markdown`；`--raw` 时仍用 YAML |
 | 未知选项、未知命令 | 退出码 2，错误里提示 `quark --help`；命令名写错时给出最接近的命令 |
-| 路径 | 网盘路径从根 `/` 写起，名字精确匹配，不支持通配符，多余的 `/` 会被整理掉 |
+| 路径 | 网盘路径必须从根 `/` 写起，没有开头的 `/` 是 `usage` 错误，不会自动补；名字精确匹配，不支持通配符，多余的 `/` 会被整理掉。名字以 `-` 开头时，在它前面加 `--` |
+| 并发 | 同一份登录态同一时间只能跑一条命令，否则第二条返回 `profile_busy`。不同的 `QUARK_PROFILE` 可以并行 |
 | 需要登录的命令 | 除 `login`、`logout` 外都要；未登录退出码 3 |
 | 环境变量 | `QUARK_PROFILE`：登录态目录，默认 `~/.quark-cli/profile`（`logout` 也读它）；`QUARK_CHROME_PATH`：Chrome 可执行文件的路径，Chrome 不在标准位置时用 |
 | 时间 | ISO 8601，带本地时区偏移，例如 `2026-10-26T09:30:00+08:00` |
@@ -48,7 +49,7 @@ quark <命令> [参数] [选项]
 | 退出码 | 含义 | 错误码 |
 | --- | --- | --- |
 | 0 | 成功 | |
-| 1 | 其他错误 | `error`、`already_logged_in`、`chrome_missing`、`login_cancelled`、`login_timeout`、`not_a_folder`、`invalid_name`、`already_exists`、`no_space`、`network` |
+| 1 | 其他错误 | `error`、`already_logged_in`、`chrome_missing`、`profile_busy`、`login_cancelled`、`login_timeout`、`not_a_folder`、`invalid_name`、`already_exists`、`no_space`、`network` |
 | 2 | 命令用法不对 | `usage`、`unknown_command`、`confirmation_required` |
 | 3 | 需要登录 | `not_logged_in` |
 | 4 | 路径或链接找不到 | `not_found`、`local_not_found`、`share_gone`、`bad_code` |
@@ -104,7 +105,7 @@ quark <命令> [参数] [选项]
 | --- | --- | --- |
 | `路径` | 网盘文件夹 | `/` |
 
-- 不分页，有多少项列多少项。
+- 不分页，有多少项列多少项。夸克每种排序最多给 10200 项，超过的文件夹正序倒序各读一遍再合并，最多能读 2 万项左右，再多就报 `error`（说明读到了多少）。一个 13196 项的文件夹要约 40 秒。
 - 输出：列表条目的数组；空文件夹输出空列表。
 - 路径不存在：`not_found`（4）。路径是文件：`not_a_folder`（1），看单个文件用 `info`。
 
@@ -192,7 +193,7 @@ quark <命令> [参数] [选项]
 
 - 恰好 2 个参数。文件名不变。进度在 stderr。下载没完成时不留下半个文件。
 - 输出：`path`（本地文件路径）、`size`。
-- 网盘路径不存在：`not_found`（4）。本地目录不存在：`local_not_found`（4）。本地已有同名文件：`already_exists`（1）。网盘路径是文件夹：`error`（1）。
+- 网盘路径不存在：`not_found`（4）。本地目录不存在：`local_not_found`（4）。本地已有同名文件：`already_exists`（1）。网盘路径是文件夹：`error`（1）。文件大于约 60MB：`refused`（5），夸克网页版不让下载（50MB 能下），请用夸克客户端或 `quark share` 的链接。
 
 ## `quark share <路径>... [--days 1|7|30|0] [--code]`
 
@@ -236,6 +237,6 @@ quark <命令> [参数] [选项]
 ## 还没验证的
 
 - `save` 一次成功的转存。
-- `login_timeout`、`chrome_missing`、`bad_code`、`no_space`、`network`，以及上传、下载中途失败的提示。
+- `bad_code`；`no_space` 只验证了对一条猜测文字的处理；下载断网是模拟的。
 
 完整清单见 [TODO.md](TODO.md)。

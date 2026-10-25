@@ -191,6 +191,17 @@ describe('e2e organize', { timeout: 600_000 }, () => {
       assert.deepEqual(await s.names(`${R}/rm`), ['one', 'two']);
     });
 
+    test('a path without the leading / is a usage error and deletes nothing, even with --yes', async () => {
+      // `xargs` splits "my file" into two words; a word must never be read as /my.
+      const res = await s.q('rm', 'one', '--yes');
+      assert.equal(res.exit, 2);
+      assert.equal(s.err(res).code, 'usage');
+      assert.deepEqual(await s.names(`${R}/rm`), ['one', 'two']);
+      const top = await s.q('rm', R.slice(1), '--yes');
+      assert.equal(top.exit, 2);
+      assert.equal((await s.q('info', R, '--raw')).exit, 0, 'the test root must still exist');
+    });
+
     test('the plan is in yaml too and counts several paths', async () => {
       const res = await s.q('rm', `${R}/rm/one`, `${R}/rm/two`);
       assert.equal(res.exit, 2);

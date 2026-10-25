@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from 'node:timers/promises';
-import { open, isLoggedIn } from '../session.js';
+import { open, isLoggedIn, openError } from '../session.js';
 import { nickname } from '../account.js';
 import { openQrWindow } from '../qrwindow.js';
 import { fail } from '../errors.js';
@@ -49,14 +49,11 @@ export default {
   args: [],
   examples: ['quark login'],
   effect: { changes: false, undo: 'quark logout', login: false },
-  errors: ['already_logged_in', 'chrome_missing', 'login_cancelled', 'login_timeout'],
+  errors: ['already_logged_in', 'chrome_missing', 'profile_busy', 'login_cancelled', 'login_timeout'],
   related: ['logout', 'whoami'],
   async run({ emit }) {
     const { context, page } = await open().catch((e) => {
-      if (/executable|chrome/i.test(e.message)) {
-        throw fail('chrome_missing', '本机没有找到 Google Chrome', { next: '请用户安装 Google Chrome；已安装在非标准位置时，设置环境变量 QUARK_CHROME_PATH 指向它', detail: e.message.split('\n')[0] });
-      }
-      throw e;
+      throw openError(e);
     });
     let win;
     try {

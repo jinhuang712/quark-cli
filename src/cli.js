@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
 import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { open, isLoggedIn } from './session.js';
+import { open, isLoggedIn, openError } from './session.js';
 import { EXIT, QuarkError, fail, loginError, usageError } from './errors.js';
 import { pickFormat, render, renderError } from './output.js';
 import { commandHelp, nearest, topHelp } from './help.js';
@@ -37,7 +37,13 @@ function parse(cmd, rest) {
   try {
     return parseArgs({ args: rest, allowPositionals: true, options: { ...GLOBAL, ...cmd.options } });
   } catch (e) {
-    throw usageError(`${e.message}`, `运行 quark ${cmd.name} --help 看用法`);
+    const dash = /Unknown option '(-[^']*)'/.exec(e.message);
+    throw usageError(
+      e.message,
+      dash
+        ? `运行 quark ${cmd.name} --help 看有哪些选项；${dash[1]} 如果其实是名字或路径，在它前面加 --，例如 quark ${cmd.name} <路径> -- ${dash[1]}`
+        : `运行 quark ${cmd.name} --help 看用法`,
+    );
   }
 }
 
@@ -74,10 +80,7 @@ export async function main(argv) {
     await cmd.run(ctx);
   } else {
     const { context, page } = await open().catch((e) => {
-      if (/executable|chrome/i.test(e.message)) {
-        throw fail('chrome_missing', '本机没有找到 Google Chrome', { next: '请用户安装 Google Chrome；已安装在非标准位置时，设置环境变量 QUARK_CHROME_PATH 指向它', detail: e.message.split('\n')[0] });
-      }
-      throw e;
+      throw openError(e);
     });
     try {
       if (!(await isLoggedIn(page))) throw loginError();

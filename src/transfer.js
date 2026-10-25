@@ -84,7 +84,15 @@ export async function uploadFile(page, { fid, folderName, local, name, size }) {
 export async function downloadFile(page, context, { fid, dest, size, onProgress }) {
   const part = `${dest}.part`;
   try {
-    const r = await call(page, 'POST', '/file/download', { body: { fids: [fid] } });
+    const r = await call(page, 'POST', '/file/download', { body: { fids: [fid] } }).catch((e) => {
+      if (/size limit/i.test(e.message)) {
+        throw refused(`夸克网页版不让下载这么大的文件（${size ? `${(size / 1048576).toFixed(0)}MB` : '大文件'}），实测 50MB 能下、60MB 起不行`, {
+          next: '请用户在夸克客户端里下载；或者用 quark share 给这个文件建一个分享链接，让用户打开链接下载',
+          detail: e.message,
+        });
+      }
+      throw e;
+    });
     const url = r.data?.[0]?.download_url;
     if (!url) throw fail('error', '夸克没有给出这个文件的下载链接', { next: '稍后重试；反复失败请让用户在夸克客户端确认文件能正常下载' });
     const cookies = await context.cookies(url);

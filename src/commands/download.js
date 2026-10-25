@@ -25,7 +25,7 @@ export default {
   ],
   examples: ['quark download /WORK/report.pdf ./downloads', 'quark download /WORK/report.pdf . --raw'],
   effect: { changes: false, undo: '删掉下载下来的本地文件即可' },
-  errors: ['not_found', 'local_not_found', 'already_exists', 'no_space', 'network'],
+  errors: ['not_found', 'local_not_found', 'already_exists', 'no_space', 'network', 'refused'],
   related: ['ls', 'info', 'upload'],
   async run({ page, context, args, emit, progress }) {
     if (args.length !== 2) {

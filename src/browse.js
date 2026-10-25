@@ -1,10 +1,17 @@
 import { call, resolve } from './session.js';
 import { isoTime } from './format.js';
+import { usageError } from './errors.js';
 
 export const isDir = (file) => file.dir ?? file.file_type === 0;
 
-// "/a//b/" -> "/a/b"; the root is "/".
-export const normalize = (path) => `/${path.split('/').filter(Boolean).join('/')}`;
+// "/a//b/" -> "/a/b"; the root is "/". A drive path must start with "/": silently adding it
+// would turn a word of a space-split `xargs` line into a top-level name, and `rm` would delete it.
+export function normalize(path) {
+  if (!path.startsWith('/')) {
+    throw usageError(`网盘路径要从 / 开始写，收到了 ${JSON.stringify(path)}`, '补上开头的 /；名字里有空格时，用 `tr \'\\n\' \'\\0\' | xargs -0` 接管道，不要直接 xargs');
+  }
+  return `/${path.split('/').filter(Boolean).join('/')}`;
+}
 
 // session.resolve() already throws the "not found" error (exit 4).
 export const resolveOrFail = resolve;

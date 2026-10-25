@@ -10,6 +10,7 @@ export const CODES = {
   not_logged_in: EXIT.login,
   already_logged_in: EXIT.error,
   chrome_missing: EXIT.error,
+  profile_busy: EXIT.error,
   login_cancelled: EXIT.error,
   login_timeout: EXIT.error,
   not_found: EXIT.notFound,

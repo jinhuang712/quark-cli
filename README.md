@@ -63,6 +63,7 @@ quark search 简历
 ## 文档
 
 - [FEATURES.md](FEATURES.md)：每个功能做什么、做不到什么、不会做什么
+- [CLI.md](CLI.md)：每条命令的写法、参数、输出字段和错误码的查阅表
 - [TODO.md](TODO.md)：还没验证的和还没解决的
 - [CHANGELOG.md](CHANGELOG.md)
 - [skills/quark-cli/SKILL.md](skills/quark-cli/SKILL.md)：教 agent 使用 `quark` 的 skill

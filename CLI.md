@@ -1,127 +1,122 @@
 # CLI
 
-命令行的查阅表：每条命令的写法、参数、取值、默认值、输出字段，以及退出码。每条命令做什么、是否已做、为什么这样设计，见 [FEATURES.md](FEATURES.md)。
+命令行的查阅表：每条命令的写法、参数、默认值、输出字段，以及退出码。每条命令做什么、是否已做、为什么这样设计，见 [FEATURES.md](FEATURES.md)。命令自己的说明也能随时看：`quark --help`、`quark <命令> --help`。
 
 ```
 quark <命令> [参数] [选项]
 ```
 
-| 命令 | 写法 | 功能 |
-| --- | --- | --- |
-| `login` | `login [--force]` | F1 |
-| `whoami` | `whoami` | F2 |
-| `logout` | `logout` | F3 |
-| `ls` | `ls [路径]` | F4 |
-| `search` | `search <关键词>...` | F5 |
-| `info` | `info <路径>` | F6 |
-| `mkdir` | `mkdir <路径>` | F7 |
-| `mv` | `mv <来源> <目标目录>` | F8 |
-| `rename` | `rename <路径> <新名字>` | F9 |
-| `rm` | `rm [--yes] <路径>...` | F10 |
-| `upload` | `upload <本地路径>... [网盘目录] [--to <网盘目录>]` | F11 |
-| `download` | `download <网盘路径> [本地目录]` | F12 |
-| `share` | `share <路径>... [--days 1\|7\|30\|0] [--code]` | F13 |
-| `shares` | `shares` | F14 |
-| `unshare` | `unshare <链接>` | F15 |
-| `save` | `save <链接> [网盘目录] [--code <提取码>]` | F16 |
+| 命令 | 写法 | 功能 | 会改动网盘 |
+| --- | --- | --- | --- |
+| `login` | `login` | F1 | 否 |
+| `whoami` | `whoami` | F2 | 否 |
+| `logout` | `logout` | F3 | 否 |
+| `ls` | `ls [路径]` | F4 | 否 |
+| `search` | `search <关键词>` | F5 | 否 |
+| `info` | `info <路径>` | F6 | 否 |
+| `mkdir` | `mkdir <路径>` | F7 | 是 |
+| `mv` | `mv <来源> <目标目录>` | F8 | 是 |
+| `rename` | `rename <路径> <新名字>` | F9 | 是 |
+| `rm` | `rm <路径>... [--yes]` | F10 | 是 |
+| `upload` | `upload <本地路径> <网盘目录>` | F11 | 是 |
+| `download` | `download <网盘路径> <本地目录>` | F12 | 否 |
+| `share` | `share <路径>... [--days 1\|7\|30\|0] [--code]` | F13 | 是 |
+| `shares` | `shares` | F14 | 否 |
+| `unshare` | `unshare <链接>` | F15 | 是 |
+| `save` | `save <链接> <网盘目录> [--code <提取码>]` | F16 | 是 |
 
 ## 全局规则
 
 | 项 | 规则 |
 | --- | --- |
 | 选项位置 | 选项写在命令名之后。`quark --json ls` 会把 `--json` 当成命令名，退出码 2 |
-| `--json` | 每条命令都接受。stdout 只输出一个 JSON 对象或数组（2 空格缩进）；进度和提示仍在 stderr |
-| 未知选项 | 退出码 2，stderr 给出该命令的 `usage:` 行。本工具**没有** `--help` 和 `-h`：`quark <命令> --help` 同样是未知选项，退出码 2 |
-| 以 `-` 开头的参数 | 当作选项。要当位置参数，放在 `--` 之后 |
-| 无参数 | `quark` 在 stderr 打印命令列表，退出码 0 |
-| 未知命令 | 同样打印命令列表，退出码 2 |
-| 路径 | 网盘路径从根 `/` 写起，名字精确匹配，不支持通配符。`ls`、`info`、`search` 会整理多余的 `/`；其他命令按原样使用 |
-| 错误输出 | stderr 一行 `quark: <说明>`，失败时 stdout 为空（`upload` 例外，见该命令） |
-| 需要登录的命令 | 除 `login`、`logout` 外都要。先开浏览器检查登录，再检查参数，所以未登录时用法错误也会先报退出码 3 |
+| 帮助 | `quark`、`quark --help`、`-h`、`quark help` 输出总览；`quark <命令> --help` 输出该命令的用法。都写到 stdout，退出码 0 |
+| 输出格式 | 默认 YAML；`--json`、`--markdown`、`--raw` 三选一，同时给两个是用法错误；`--full` 和任一种合用，输出夸克接口的全部字段 |
+| stdout 和 stderr | 结果写 stdout；进度和提示写 stderr |
+| 错误输出 | stderr 输出 `error`、`code`、`exit`、`next`，有的还有 `detail`（夸克的原话）和结构化字段（`rm` 的 `plan`）。格式跟随 `--json`、`--markdown`；`--raw` 时仍用 YAML |
+| 未知选项、未知命令 | 退出码 2，错误里提示 `quark --help`；命令名写错时给出最接近的命令 |
+| 路径 | 网盘路径从根 `/` 写起，名字精确匹配，不支持通配符，多余的 `/` 会被整理掉 |
+| 需要登录的命令 | 除 `login`、`logout` 外都要；未登录退出码 3 |
 | 环境变量 | `QUARK_PROFILE`：登录态目录，默认 `~/.quark-cli/profile`（`logout` 也读它） |
-| 大小显示 | `B`、`K`、`M`、`G`、`T`；`B` 无小数，`K`、`M` 一位小数，`G`、`T` 两位小数 |
-| 时间显示 | 本地时区 `YYYY-MM-DD HH:MM` |
+| 时间 | ISO 8601，带本地时区偏移，例如 `2026-10-26T09:30:00+08:00` |
+| 大小 | 字节数（数字） |
 
-## 退出码
+## 退出码和错误码
 
-| 退出码 | 含义 |
+每个错误码对应一个退出码。
+
+| 退出码 | 含义 | 错误码 |
+| --- | --- | --- |
+| 0 | 成功 | |
+| 1 | 其他错误 | `error`、`already_logged_in`、`chrome_missing`、`login_cancelled`、`login_timeout`、`not_a_folder`、`already_exists`、`no_space`、`network` |
+| 2 | 命令用法不对 | `usage`、`unknown_command`、`confirmation_required` |
+| 3 | 需要登录 | `not_logged_in` |
+| 4 | 路径或链接找不到 | `not_found`、`local_not_found`、`share_gone`、`bad_code` |
+| 5 | 夸克拒绝了请求 | `refused` |
+
+## `--raw` 每个命令输出什么
+
+每行一个值，没有任何修饰。
+
+| 命令 | 每行 |
 | --- | --- |
-| 0 | 成功 |
-| 1 | 其他错误 |
-| 2 | 命令用法不对（含未知选项、未知命令） |
-| 3 | 需要登录 |
-| 4 | 路径或链接找不到 |
-| 5 | 夸克拒绝了请求 |
+| `ls`、`search`、`info` | 网盘路径 |
+| `mkdir`、`upload`、`save` | 被操作的网盘路径（`upload` 是每个传好的文件，`save` 是每个存好的项） |
+| `mv`、`rename` | 操作后的新路径 |
+| `rm` | 每个被删的路径 |
+| `download` | 本地文件路径 |
+| `share` | 链接；加了 `--code` 时第二行是提取码 |
+| `shares`、`unshare` | 链接 |
+| `whoami`、`login` | 账号名 |
+| `logout` | 没有输出 |
 
-## 列表输出的行格式
-
-`ls` 和 `search` 的人读输出，列之间是制表符：
-
-```
-<类型> <大小>	<修改时间>	<名字>[	<完整路径>]
-```
-
-- 类型：`d` 文件夹，`-` 文件。大小：文件夹是 `-`。文件夹名后带 `/`。
-- 排序：文件夹在前，同类按修改时间从新到旧。
-- `search` 多一列完整路径。
-- 空文件夹时 `ls` 输出一个空行。
-
-## JSON 条目（`ls`、`search`、`info`）
+## 列表条目（`ls`、`search`）
 
 | 字段 | 含义 |
 | --- | --- |
 | `name` | 名字 |
 | `path` | 完整路径 |
-| `type` | `folder` 或 `file` |
+| `type` | `dir` 或 `file` |
 | `size` | 字节数；文件夹是 `null` |
-| `items` | 文件夹里的项数；文件是 `null` |
-| `created` | 创建时间，ISO 8601；没有则 `null` |
-| `updated` | 修改时间，ISO 8601；没有则 `null` |
-| `fid` | 夸克内部 ID |
+| `modified` | 修改时间 |
 
-## `quark login [--force]`
+排序：文件夹在前，同类按修改时间从新到旧。
 
-| 选项 | 含义 | 默认 |
-| --- | --- | --- |
-| `--force` | 先清掉本机登录态再扫码 | 关 |
+## `quark login`
 
-- 不检查登录。已登录且无 `--force` 时直接输出当前账号。
-- 扫码窗口 5 分钟超时；窗口被关闭则取消。
-- 人读：`账号: <账号名>`。
-- JSON：`name`、`alreadyLoggedIn`（布尔）。
-- 失败退出码 1：窗口被关闭、超时、没有 Chrome。
+- 不检查登录。已经登录：失败，`already_logged_in`，不弹窗。要换账号先 `quark logout`。
+- 弹出只有二维码的小窗，5 分钟超时；窗口被关闭则取消。
+- 输出：`name`。
+- 失败：`already_logged_in`、`login_cancelled`、`login_timeout`、`chrome_missing`，都是退出码 1。
 
 ## `quark whoami`
 
-- 人读三行：`账号:`、`容量: 已用 / 总量`、`会员: 是（<类型>，<日期> 到期）` 或 `会员: 否`。
-- 会员类型显示：`SUPER_VIP` 超级会员，`VIP` 会员，`MINI_VIP` 迷你会员，`Z_VIP` ZVIP；其他值原样显示。
-- JSON：`name`、`used`（字节）、`total`（字节）、`member`（布尔）、`memberType`、`expiresAt`（毫秒时间戳，没有则 `null`）。
+- 输出：`name`、`used`（字节）、`total`（字节）、`member`（布尔）、`member_until`（日期，非会员时没有）。
 
 ## `quark logout`
 
 - 不检查登录。删除登录态目录；没有该目录也成功。
-- 人读：`已退出登录`。JSON：`loggedOut`（`true`）。
+- 输出：`logged_out: true`。
 
 ## `quark ls [路径]`
 
 | 参数 | 含义 | 默认 |
 | --- | --- | --- |
-| `路径` | 网盘文件夹或文件 | `/` |
+| `路径` | 网盘文件夹 | `/` |
 
-- 路径是文件时只列这一个文件。不分页。
-- 输出见"列表输出的行格式"；JSON 是条目数组。
-- 路径不存在：退出码 4。
+- 不分页，有多少项列多少项。
+- 输出：列表条目的数组；空文件夹输出空列表。
+- 路径不存在：`not_found`（4）。路径是文件：`not_a_folder`（1），看单个文件用 `info`。
 
-## `quark search <关键词>...`
+## `quark search <关键词>`
 
 | 参数 | 含义 | 默认 |
 | --- | --- | --- |
-| `关键词` | 可以给多个，用空格连成一个词；去掉首尾空白后为空是用法错误 | 必填 |
+| `关键词` | 去掉首尾空白后不能为空 | 必填 |
 
-- 最多 50 条，按"列表输出的行格式"排序，加完整路径列。
-- 结果超过 50 条时，人读输出末尾多一行 `共 N 条结果，只列出前 50 条；请换更具体的关键词`；`--json` 时这句话写到 stderr。
-- 没有结果：人读 `没有找到`，JSON `[]`，退出码 0。
-- JSON 是条目数组。
+- 最多返回 50 条。
+- 输出：`total`（总数）、`truncated`（是否被截成 50 条）、`results`（列表条目的数组，`path` 是完整路径）。
+- 没有结果：`total: 0`，`results` 为空，退出码 0。
 
 ## `quark info <路径>`
 
@@ -129,30 +124,28 @@ quark <命令> [参数] [选项]
 | --- | --- | --- |
 | `路径` | 网盘文件或文件夹，可以是 `/` | 必填 |
 
-- 人读七行：名字、路径、类型、大小（文件夹为项数）、创建时间、修改时间、ID。没有的时间显示 `-`。
-- JSON 是单个条目对象。
-- 路径不存在：退出码 4。
+- 输出：`name`、`path`、`type`、`size`（文件）或 `items`（文件夹的项数）、`created`、`modified`、`id`。根目录的时间为空，`id` 是 `0`。
+- 路径不存在：`not_found`（4）。
 
 ## `quark mkdir <路径>`
 
 | 参数 | 含义 | 默认 |
 | --- | --- | --- |
-| `路径` | 要建的文件夹，缺的上级一并建 | 必填，恰好 1 个 |
+| `路径` | 要建的文件夹，缺的上级一并建；不能是 `/` | 必填，恰好 1 个 |
 
-- 人读：新建 `created <路径>`；已存在 `exists <路径>`，退出码 0。
-- JSON：`path`（按输入原样）、`fid`、`created`（布尔）。
-- 路径上有同名文件挡着：退出码 1。
+- 输出：`path`、`type`、`changed`。已存在的文件夹：`changed: false`，退出码 0。
+- 路径上有同名文件挡着：`already_exists`（1）。
 
 ## `quark mv <来源> <目标目录>`
 
 | 参数 | 含义 | 默认 |
 | --- | --- | --- |
-| `来源` | 要移动的文件或文件夹 | 必填 |
+| `来源` | 要移动的文件或文件夹，不能是 `/` | 必填 |
 | `目标目录` | 必须已存在且是文件夹 | 必填 |
 
 - 恰好 2 个参数。名字不变，不覆盖。
-- 人读：`moved <来源> -> <新路径>`。JSON：`from`、`to`、`fid`。
-- 来源是 `/`：退出码 2。来源或目标目录不存在：4。目标不是文件夹、目标里已有同名项：1。
+- 输出：`from`、`path`（新路径）、`type`、`changed`。
+- 来源或目标目录不存在：`not_found`（4）。目标不是文件夹：`not_a_folder`（1）。目标里已有同名项：`already_exists`（1）。把文件夹移进它自己里面、来源是 `/`：`usage`（2）。
 
 ## `quark rename <路径> <新名字>`
 
@@ -162,49 +155,44 @@ quark <命令> [参数] [选项]
 | `新名字` | 只是名字，不能含 `/` | 必填 |
 
 - 恰好 2 个参数。
-- 人读：`renamed <路径> -> <新路径>`。JSON：`from`、`to`、`fid`。
-- 新名字含 `/`、路径是 `/`：退出码 2。路径不存在：4。同目录已有同名项：1。
+- 输出：`from`、`path`（新路径）、`type`、`changed`。
+- 新名字含 `/`、路径是 `/`：`usage`（2）。路径不存在：`not_found`（4）。同目录已有同名项：`already_exists`（1）。
 
-## `quark rm [--yes] <路径>...`
+## `quark rm <路径>... [--yes]`
 
 | 选项/参数 | 含义 | 默认 |
 | --- | --- | --- |
 | `路径` | 一个或多个，不能是 `/` | 必填 |
-| `--yes` | 跳过确认 | 关 |
+| `--yes` | 确认删除 | 关 |
 
-- 不加 `--yes` 时在 stderr 提示 `删除 ...？输入 y 确认:`，只有输入 `y` 才删；其他输入退出码 1，不删。`--json` 也照样确认。
-- 没有终端又不加 `--yes`：退出码 2，不删。这一项在查路径之前检查。
-- 任何一个路径不存在：退出码 4，一个都不删。
-- 删进回收站，30 天内可找回。
-- 人读：每个路径一行 `已删除 <路径>（...）`，末行说明回收站。
-- JSON：`deleted`（数组，每项 `path`、`fid`、`folder`）、`recycle_bin_days`（30）。
+- 不加 `--yes`：什么都不删，`confirmation_required`（2）。错误里的 `plan` 有 `paths`、`folders`、`files`，`next` 说明把计划给用户看、同意后加 `--yes`。
+- 加了 `--yes`：先检查所有路径都存在，再一次请求全部删掉。任何一个不存在：`not_found`（4），一个都不删。
+- 删进回收站，30 天内可找回（客户端 3.1.3 以上）。
+- 输出：`deleted`（路径数组）、`folders`、`files`、`changed`、`note`（回收站说明）。
 
-## `quark upload <本地路径>... [网盘目录]`
+## `quark upload <本地路径> <网盘目录>`
 
-| 选项/参数 | 含义 | 默认 |
+| 参数 | 含义 | 默认 |
 | --- | --- | --- |
-| `本地路径` | 文件或文件夹，可多个；文件夹连同内容上传 | 必填 |
-| `网盘目录` | 目标目录，不存在则建出 | `/` |
-| `--to <网盘目录>` | 明确指定目标，此时所有位置参数都是本地路径 | 无 |
+| `本地路径` | 一个文件或文件夹；文件夹连同内容上传，在网盘目录里建一个同名文件夹 | 必填 |
+| `网盘目录` | 目标目录，必须已存在 | 必填 |
 
-- 没有 `--to` 时：有 2 个以上参数，且最后一个以 `/` 开头或本地不存在，才把它当网盘目录；只有 1 个参数时它一定是本地路径。
-- 本地路径不存在：退出码 1。符号链接等既非文件又非文件夹的项在文件夹内被忽略。
-- 同名文件跳过不覆盖；文件一个接一个传；进度在 stderr。
-- 人读（stdout）：每个文件一行 `<网盘路径>\t<大小>[ (instant upload)| (skipped: already exists)| (failed: <原因>)]`，末行 `ok N (instant M), skipped S, failed F`。
-- JSON：`files`（数组，每项 `path`、`size`、`state`，失败时另有 `error`）、`ok`（含秒传）、`skipped`、`failed`。`state` 取值：`ok`、`instant`、`skipped`、`failed`。
-- 有任何失败：输出之后退出码 1（stderr `N file(s) failed to upload`）。全部跳过：0。
-- 需要建文件夹的位置上是文件：中止，退出码 1。
+- 恰好 2 个参数。文件一个接一个传，进度在 stderr。
+- 网盘目录里已有同名项：`already_exists`（1），上传前就失败，什么都不传。
+- 网盘目录不存在：`not_found`（4）。本地路径不存在：`local_not_found`（4）。
+- 输出：`uploaded`（数组，每项 `path`、`size`、`instant`）、`count`、`instant_count`。`instant` 为 `true` 表示秒传。
+- 传到一半失败：错误里列出已经传好的文件，`next` 说明先给用户看，再 `quark rm <目录> --yes` 清掉新建的目录后重试。
 
-## `quark download <网盘路径> [本地目录]`
+## `quark download <网盘路径> <本地目录>`
 
 | 参数 | 含义 | 默认 |
 | --- | --- | --- |
 | `网盘路径` | 一个文件（不支持文件夹） | 必填 |
-| `本地目录` | 存放目录，不存在则建出 | `.` |
+| `本地目录` | 存放目录，必须已存在 | 必填 |
 
-- 恰好 1 或 2 个参数。文件名不变。进度在 stderr（`--json` 时也有）。
-- 人读：本地文件的绝对路径。JSON：`path`（本地绝对路径）、`drive_path`、`size`。
-- 网盘路径不存在：退出码 4。是文件夹、本地已有同名文件、本地目录是个文件、下载中断：1。
+- 恰好 2 个参数。文件名不变。进度在 stderr。下载没完成时不留下半个文件。
+- 输出：`path`（本地文件路径）、`size`。
+- 网盘路径不存在：`not_found`（4）。本地目录不存在：`local_not_found`（4）。本地已有同名文件：`already_exists`（1）。网盘路径是文件夹：`error`（1）。
 
 ## `quark share <路径>... [--days 1|7|30|0] [--code]`
 
@@ -214,16 +202,14 @@ quark <命令> [参数] [选项]
 | `--days` | 有效期（天） | `1`、`7`、`30`、`0`（永久） | `7` |
 | `--code` | 生成 4 位提取码 | 开关，不带值 | 关 |
 
-- 其他 `--days` 值：退出码 2。路径不存在：4。
-- 人读：链接；有提取码时再加一行 `提取码: <码>`。
-- JSON：`link`、`code`（无则 `null`）、`days`（数字）、`share_id`、`files`（名字数组）。
+- 其他 `--days` 值：`usage`（2）。路径不存在：`not_found`（4）。
+- 输出：`link`、`code`（有才有）、`days`、`files`（路径数组）。
 
 ## `quark shares`
 
-- 无参数。列出自己创建的全部分享，新的在前。
-- 人读每行：`<名字>\t<链接>[ (<提取码>)]\t<创建时间>\t<剩余>`。没有分享时输出一个空行。
-- JSON 数组，每项：`name`、`link`、`code`（无则 `null`）、`created`（毫秒时间戳）、`remaining`。
-- `remaining` 取值：`permanent`、`expired`、`<N>d`、`<N>h`。
+- 无参数。列出自己创建的全部分享。
+- 输出：数组，每项 `name`、`link`、`code`（有才有）、`created`、`remaining`。
+- `remaining` 取值：`permanent`、`expired`，或剩余时间。
 
 ## `quark unshare <链接>`
 
@@ -231,36 +217,25 @@ quark <命令> [参数] [选项]
 | --- | --- | --- |
 | `链接` | `https://pan.quark.cn/s/<id>` 或 12 位小写十六进制 id | 必填，恰好 1 个 |
 
-- 不是夸克分享链接：退出码 2。不是自己创建的、或已取消、已过期：4。
-- 人读：`cancelled <链接>`。JSON：`cancelled`（`true`）、`link`、`name`。
+- 不是夸克分享链接：`usage`（2）。已取消或已过期：`share_gone`（4）。不是自己创建的：`not_found`（4）；这一条还没有验证。
+- 输出：`link`、`changed`。
 
-## `quark save <链接> [网盘目录] [--code <提取码>]`
+## `quark save <链接> <网盘目录> [--code <提取码>]`
 
 | 选项/参数 | 含义 | 默认 |
 | --- | --- | --- |
 | `链接` | 同 `unshare` | 必填 |
-| `网盘目录` | 存放目录 | `/来自：分享` |
+| `网盘目录` | 存放目录，必须已存在 | 必填 |
 | `--code` | 提取码 | 空 |
 
-- 只转存分享的最上层项。默认目录不存在时自动建出；指定的目录不存在：退出码 4。
-- 同名项跳过，每个跳过项在 stderr 一行 `skipped (same name exists): <名字>`。
-- 人读：`saved N item(s) to <目录>`，之后每项一行缩进名字，有跳过时末行 `skipped N with the same name`。
-- JSON：`saved`（名字数组）、`skipped`（名字数组）、`dir`。
-- 退出码：不是夸克链接 2；链接失效或提取码错 4；全部被跳过、分享为空、容量不够 1；夸克拒绝转存 5。
+- 恰好 2 个参数。只转存分享的最上层项。
+- 目录里已有同名项：`already_exists`（1），转存前就失败，什么都不存。目录不存在：`not_found`（4）。目录是文件：`not_a_folder`（1）。
+- 链接失效：`share_gone`（4）。提取码错或没给：`bad_code`（4）。夸克拒绝（包括转存自己的分享）：`refused`（5）。容量不够：`no_space`（1）。
+- 输出：`saved`（路径数组）、`count`。
 
-## 对不上的地方
+## 还没验证的
 
-写文档时发现代码和现有文档不一致之处，尚未改动任何一边。
+- `save` 一次成功的转存。
+- `login_timeout`、`chrome_missing`、`bad_code`、`no_space`、`network`，以及上传、下载中途失败的提示。
 
-| 位置 | 代码 | 文档 |
-| --- | --- | --- |
-| 命令列表 | 没有 `--help`、`-h`；`quark ls --help` 退出码 2 | 无要求，仅记录 |
-| 退出码 5 | `session.call` 只在夸克消息含"限制、风控、违规、封禁"时给 5；`share`、`share/password`、`save` 里任何失败都是 5 | F18 写"账号受限、被风控" |
-| 没有 Chrome | 除 `login` 弹窗外，所有命令先经 Playwright 启动 Chrome，报 Playwright 自己的错误，退出码 1 | FEATURES"本机没有 Chrome"一行写 stderr 说明需要安装 Chrome；弹窗代码的提示还提到 Edge，README 说不支持 Edge |
-| `upload` 目标判断 | 只有 1 个参数时一定是本地路径 | F11 写"最后一个参数以 / 开头或本地没有这个路径时当作网盘目录" |
-| `info` 文件夹 | JSON `size` 为 `null`，项数在 `items` | F6 写"文件夹的大小显示为里面的项数"，人读输出符合 |
-| JSON 字段命名 | `whoami` 驼峰（`memberType`、`expiresAt`），`share`、`download`、`rm` 蛇形（`share_id`、`drive_path`、`recycle_bin_days`） | 未规定 |
-| 空列表 | `ls` 空文件夹、`shares` 无分享时 stdout 输出一个空行 | 未说明 |
-| 未登录时的用法错误 | 登录检查先于参数检查，退出码 3 而不是 2 | 未说明 |
-| `login` 用法行 | 代码里的 usage 写成 `login [--force] [--json]`，`whoami [--json]` 同理；其他命令不写 | `--json` 对所有命令都有效 |
-| 命令列表对齐 | `share`、`upload` 的用法行超过 36 列，和说明粘在一起 | 无 |
+完整清单见 [TODO.md](TODO.md)。

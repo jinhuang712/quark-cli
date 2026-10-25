@@ -2,7 +2,8 @@ export function size(n) {
   if (n < 1024) return `${n}B`;
   if (n < 1048576) return `${(n / 1024).toFixed(1)}K`;
   if (n < 1073741824) return `${(n / 1048576).toFixed(1)}M`;
-  return `${(n / 1073741824).toFixed(2)}G`;
+  if (n < 1099511627776) return `${(n / 1073741824).toFixed(2)}G`;
+  return `${(n / 1099511627776).toFixed(2)}T`;
 }
 
 const pad = (n) => String(n).padStart(2, '0');

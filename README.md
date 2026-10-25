@@ -51,7 +51,7 @@ quark search 简历
 
 ## 已知限制
 
-- 只能用 Google Chrome，不支持 Edge 和 Firefox。
+- 只能用 Google Chrome，不支持 Edge 和 Firefox。Chrome 装在非标准位置时，设置环境变量 `QUARK_CHROME_PATH` 指向它的可执行文件。
 - 每条命令都会启动一次 Chrome，要几秒；连续发很多条命令会慢。
 - `download` 只能下载单个文件，没有断点续传；`upload` 也没有断点续传。
 - `save`（转存别人的分享）还没有成功转存过的测试。

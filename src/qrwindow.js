@@ -14,7 +14,8 @@ const CHROME_PATHS = [
   '/usr/bin/microsoft-edge',
 ];
 
-export const findChrome = () => CHROME_PATHS.find((p) => existsSync(p));
+// QUARK_CHROME_PATH wins, the same as for the hidden page in session.js.
+export const findChrome = () => process.env.QUARK_CHROME_PATH || CHROME_PATHS.find((p) => existsSync(p));
 
 const qrPage = `<!doctype html>
 <html lang="zh-CN" translate="no"><head><meta charset="utf-8"><meta name="google" content="notranslate"><title>夸克网盘登录</title>
@@ -34,7 +35,7 @@ const qrPage = `<!doctype html>
 // `closed` resolves when the window goes away; `update(png)` swaps the QR picture.
 export function openQrWindow(png) {
   const chrome = findChrome();
-  if (!chrome) throw fail('chrome_missing', '本机没有找到 Chrome，没法弹出二维码窗口', { next: '请用户安装 Google Chrome' });
+  if (!chrome) throw fail('chrome_missing', '本机没有找到 Chrome，没法弹出二维码窗口', { next: '请用户安装 Google Chrome；已安装在非标准位置时，设置环境变量 QUARK_CHROME_PATH 指向它' });
   const dir = mkdtempSync(join(tmpdir(), 'quark-qr-'));
   mkdirSync(join(dir, 'profile'));
   let gone = false;

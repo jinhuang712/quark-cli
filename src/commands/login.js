@@ -16,12 +16,12 @@ async function qrShot(page) {
 }
 
 // Polls the hidden page until it is logged in, the window is closed, or time runs out.
-async function waitForScan(page, win) {
+export async function waitForScan(page, win, { timeoutMs = TIMEOUT_MS } = {}) {
   let closedByUser = false;
   win.closed.then(() => {
     closedByUser = true;
   });
-  const deadline = Date.now() + TIMEOUT_MS;
+  const deadline = Date.now() + timeoutMs;
   let refreshedAt = Date.now();
   while (Date.now() < deadline) {
     if (closedByUser) throw fail('login_cancelled', '二维码窗口被关闭，登录已取消', { next: '请用户重新运行 `quark login` 扫码' });
@@ -54,7 +54,7 @@ export default {
   async run({ emit }) {
     const { context, page } = await open().catch((e) => {
       if (/executable|chrome/i.test(e.message)) {
-        throw fail('chrome_missing', '本机没有找到 Google Chrome', { next: '请用户安装 Google Chrome', detail: e.message.split('\n')[0] });
+        throw fail('chrome_missing', '本机没有找到 Google Chrome', { next: '请用户安装 Google Chrome；已安装在非标准位置时，设置环境变量 QUARK_CHROME_PATH 指向它', detail: e.message.split('\n')[0] });
       }
       throw e;
     });

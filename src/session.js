@@ -4,12 +4,14 @@ import { join } from 'node:path';
 import { QuarkError, notFound, refused } from './errors.js';
 
 const PROFILE = process.env.QUARK_PROFILE || join(homedir(), '.quark-cli', 'profile');
+// Chrome in a non-standard location.
+const CHROME_PATH = process.env.QUARK_CHROME_PATH;
 const HOME = 'https://pan.quark.cn/list';
 const API = 'https://drive-pc.quark.cn/1/clouddrive';
 
 export async function open({ headed = false } = {}) {
   const context = await chromium.launchPersistentContext(PROFILE, {
-    channel: 'chrome',
+    ...(CHROME_PATH ? { executablePath: CHROME_PATH } : { channel: 'chrome' }),
     headless: !headed,
     viewport: { width: 1280, height: 800 },
   });

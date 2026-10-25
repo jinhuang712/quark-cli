@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fail } from './errors.js';
 
 const CHROME_PATHS = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -33,14 +34,19 @@ const qrPage = `<!doctype html>
 // `closed` resolves when the window goes away; `update(png)` swaps the QR picture.
 export function openQrWindow(png) {
   const chrome = findChrome();
-  if (!chrome) throw new Error('没有找到 Chrome 或 Edge，没法弹出二维码窗口。请安装 Google Chrome 后重试');
+  if (!chrome) throw fail('chrome_missing', '本机没有找到 Chrome，没法弹出二维码窗口', { next: '请用户安装 Google Chrome' });
   const dir = mkdtempSync(join(tmpdir(), 'quark-qr-'));
   mkdirSync(join(dir, 'profile'));
-  const update = (buf) => {
+  let gone = false;
+  const write = (buf) => {
     writeFileSync(join(dir, 'qr.tmp'), buf);
     renameSync(join(dir, 'qr.tmp'), join(dir, 'qr.png'));
   };
-  update(png);
+  // After the window is closed its temp dir is gone; a late update is dropped, not an error.
+  const update = (buf) => {
+    if (!gone) write(buf);
+  };
+  write(png);
   writeFileSync(join(dir, 'index.html'), qrPage);
   const proc = spawn(
     chrome,
@@ -57,6 +63,7 @@ export function openQrWindow(png) {
     { stdio: 'ignore' },
   );
   const closed = new Promise((resolve) => proc.once('exit', resolve)).then(() => {
+    gone = true;
     rmSync(dir, { recursive: true, force: true });
   });
   return { closed, update, close: () => proc.kill() };

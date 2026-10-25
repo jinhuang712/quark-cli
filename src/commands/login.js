@@ -2,7 +2,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { open, isLoggedIn } from '../session.js';
 import { nickname } from '../account.js';
 import { openQrWindow } from '../qrwindow.js';
-import { QuarkError } from '../errors.js';
+import { fail } from '../errors.js';
 
 const QR = '.scan-area';
 const POLL_MS = 2000;
@@ -24,7 +24,7 @@ async function waitForScan(page, win) {
   const deadline = Date.now() + TIMEOUT_MS;
   let refreshedAt = Date.now();
   while (Date.now() < deadline) {
-    if (closedByUser) throw new QuarkError('二维码窗口被关闭，登录已取消');
+    if (closedByUser) throw fail('login_cancelled', '二维码窗口被关闭，登录已取消', { next: '请用户重新运行 `quark login` 扫码' });
     // eslint-disable-next-line no-await-in-loop
     if (await isLoggedIn(page)) return;
     if (Date.now() - refreshedAt > REFRESH_MS) {
@@ -37,32 +37,39 @@ async function waitForScan(page, win) {
     // eslint-disable-next-line no-await-in-loop
     await sleep(POLL_MS);
   }
-  throw new QuarkError('等待扫码超时，请重新运行 quark login');
+  throw fail('login_timeout', '5 分钟内没有人扫码，登录超时', { next: '请用户重新运行 `quark login` 扫码' });
 }
 
 export default {
   name: 'login',
-  usage: 'login [--force] [--json]',
-  summary: 'scan a QR code to log in',
+  usage: 'login',
+  summary: '弹出二维码小窗，用夸克 APP 扫码登录',
+  group: 'account',
   auth: false,
-  options: { force: { type: 'boolean' } },
-  async run({ flags, out }) {
-    const { context, page } = await open();
+  args: [],
+  examples: ['quark login'],
+  effect: { changes: false, undo: 'quark logout', login: false },
+  errors: ['already_logged_in', 'chrome_missing', 'login_cancelled', 'login_timeout'],
+  related: ['logout', 'whoami'],
+  async run({ emit }) {
+    const { context, page } = await open().catch((e) => {
+      if (/executable|chrome/i.test(e.message)) {
+        throw fail('chrome_missing', '本机没有找到 Google Chrome', { next: '请用户安装 Google Chrome', detail: e.message.split('\n')[0] });
+      }
+      throw e;
+    });
     let win;
     try {
-      if (!flags.force && (await isLoggedIn(page))) {
+      if (await isLoggedIn(page)) {
         const name = await nickname(page);
-        out(`账号: ${name}`, { name, alreadyLoggedIn: true });
-        return;
-      }
-      if (flags.force) {
-        await context.clearCookies();
-        await page.reload({ waitUntil: 'domcontentloaded' });
+        throw fail('already_logged_in', `已经登录，当前账号是 ${name}`, {
+          next: '直接使用即可；要换账号先运行 quark logout，再运行 quark login',
+        });
       }
       win = openQrWindow(await qrShot(page));
       await waitForScan(page, win);
       const name = await nickname(page);
-      out(`账号: ${name}`, { name, alreadyLoggedIn: false });
+      emit({ data: { name }, lines: [name] });
     } finally {
       win?.close();
       await context.close();

@@ -5,11 +5,17 @@ import { join } from 'node:path';
 export default {
   name: 'logout',
   usage: 'logout',
-  summary: 'forget the saved login on this machine',
+  summary: '退出登录，清掉本机保存的登录态',
+  group: 'account',
   auth: false,
-  async run({ out }) {
+  args: [],
+  examples: ['quark logout'],
+  effect: { changes: false, undo: '重新运行 quark login 扫码', login: false },
+  errors: [],
+  related: ['login', 'whoami'],
+  async run({ emit }) {
     const profile = process.env.QUARK_PROFILE || join(homedir(), '.quark-cli', 'profile');
     rmSync(profile, { recursive: true, force: true });
-    out('已退出登录', { loggedOut: true });
+    emit({ data: { logged_out: true }, lines: [] });
   },
 };

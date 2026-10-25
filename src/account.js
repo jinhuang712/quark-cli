@@ -1,4 +1,5 @@
 import { call } from './session.js';
+import { fail } from './errors.js';
 
 // Account nickname from the web app's own account endpoint.
 export async function nickname(page) {
@@ -6,7 +7,9 @@ export async function nickname(page) {
     const r = await fetch('https://pan.quark.cn/account/info?fr=pc&platform=pc', { credentials: 'include' });
     return r.json();
   });
-  if (!res.success) throw new Error(`account/info: ${res.msg || JSON.stringify(res)}`);
+  if (!res.success) {
+    throw fail('error', '读取账号信息失败', { next: '稍后重试；反复失败请用户运行 `quark login` 重新登录', detail: res.msg || JSON.stringify(res) });
+  }
   return res.data.nickname;
 }
 

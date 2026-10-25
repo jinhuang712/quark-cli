@@ -91,7 +91,7 @@ quark <命令> [参数] [选项]
 
 ## `quark whoami`
 
-- 输出：`name`、`used`（字节）、`total`（字节）、`member`（布尔）、`member_until`（日期，非会员时没有）。
+- 输出：`name`、`used`（字节）、`total`（字节）、`used_human`、`total_human`（易读的，如 `4.01T`）、`member`（布尔）、`member_until`（日期，非会员时没有）。
 
 ## `quark logout`
 

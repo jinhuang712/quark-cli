@@ -44,7 +44,7 @@ export function parentOf(path) {
 
 export const alreadyExists = (path, what) =>
   fail('already_exists', `${path} 已经存在，${what}`, {
-    next: `先 quark rename 或 quark rm 处理 ${path}，或者换个目录`,
+    next: `要保留已有的 ${path}：换个目标。要替换它：先 quark rename ${path} 新名字 留作备份，或者请用户同意后 quark rm ${path} --yes`,
   });
 
 export async function createFolder(page, pdirFid, name) {

@@ -218,7 +218,7 @@ describe('e2e browse', { timeout: 600_000 }, () => {
       const res = await s.q('whoami');
       assert.equal(res.exit, 0, res.stderr);
       const me = s.yaml(res);
-      assert.deepEqual(Object.keys(me), ['name', 'used', 'total', 'member', 'member_until']);
+      assert.deepEqual(Object.keys(me), ['name', 'used', 'total', 'used_human', 'total_human', 'member', 'member_until']);
       assert.equal(typeof me.name, 'string');
       assert.ok(me.name.length > 0);
       assert.ok(Number.isInteger(me.used) && me.used >= 0);

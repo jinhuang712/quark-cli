@@ -53,7 +53,7 @@ export default {
     const topPath = posix.join(base, name);
     if ((await listDir(page, target.fid)).some((f) => f.file_name === name)) {
       throw fail('already_exists', `${base} 里已有 ${name}`, {
-        next: `先 quark rename 或 quark rm ${topPath}，或者换一个网盘目录`,
+        next: `要保留网盘上的 ${topPath}：换一个网盘目录，或者换一个本地文件名再传。要替换它：先 quark rename ${topPath} 新名字 留作备份，或者请用户同意后 quark rm ${topPath} --yes`,
       });
     }
 

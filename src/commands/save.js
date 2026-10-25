@@ -68,7 +68,7 @@ export default {
     const clash = items.filter((i) => existing.has(i.file_name)).map((i) => `${dirPath === '/' ? '' : dirPath}/${i.file_name}`);
     if (clash.length) {
       throw fail('already_exists', `${dirPath} 里已有同名项，什么都没有转存: ${clash.join('、')}`, {
-        next: '先 quark rename 或 quark rm 这些同名项，或者换个目录',
+        next: '要保留已有的：换一个网盘目录。要替换：先 quark rename 这些同名项留作备份，或者请用户同意后 quark rm 它们 --yes',
       });
     }
 

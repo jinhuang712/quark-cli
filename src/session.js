@@ -62,17 +62,20 @@ export async function listDir(page, fid) {
 
 // Resolves "/WORK/简历" to the fid of that folder (or file when `last` is a file).
 export async function resolve(page, path) {
-  let fid = '0';
-  let node = { fid, file_name: '/', dir: true };
-  for (const part of path.split('/').filter(Boolean)) {
-    const hit = (await listDir(page, fid)).find((f) => f.file_name === part);
-    if (!hit) {
-      const parts = path.split('/').filter(Boolean);
-      const parent = `/${parts.slice(0, parts.indexOf(part)).join('/')}`;
-      throw notFound(`网盘里没有 /${parts.join('/')}`, `用 quark ls ${parent} 看这个目录里有什么`);
-    }
-    fid = hit.fid;
-    node = hit;
-  }
-  return node;
+  const parts = path.split('/').filter(Boolean);
+  if (parts.length === 0) return { fid: '0', file_name: '/', dir: true };
+  // path_list answers for folders only, in one request however deep the path is.
+  const folderAt = async (ps) =>
+    (await call(page, 'POST', '/file/info/path_list', { body: { file_path: [`/${ps.join('/')}`], namespace: '0' } })).data[0];
+  const folder = await folderAt(parts);
+  if (folder) return folder;
+  // Not a folder: it may be a file, found by listing its parent folder.
+  const parent = parts.length === 1 ? { fid: '0' } : await folderAt(parts.slice(0, -1));
+  const hit = parent && (await listDir(page, parent.fid)).find((f) => f.file_name === parts.at(-1));
+  if (hit) return hit;
+  // Missing: point `next` at the deepest folder that does exist.
+  let depth = parts.length - 1;
+  // eslint-disable-next-line no-await-in-loop
+  while (depth > 0 && !(await folderAt(parts.slice(0, depth)))) depth--;
+  throw notFound(`网盘里没有 /${parts.join('/')}`, `用 quark ls /${parts.slice(0, depth).join('/')} 看这个目录里有什么`);
 }

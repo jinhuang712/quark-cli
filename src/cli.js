@@ -86,7 +86,8 @@ export async function main(argv) {
       await context.close();
     }
   }
-  if (result) console.log(render(format, result, { full: flags.full }));
+  const text = result ? render(format, result, { full: flags.full }) : '';
+  if (text) console.log(text);
   return EXIT.ok;
 }
 

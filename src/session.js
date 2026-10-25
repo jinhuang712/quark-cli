@@ -66,7 +66,11 @@ export async function resolve(page, path) {
   let node = { fid, file_name: '/', dir: true };
   for (const part of path.split('/').filter(Boolean)) {
     const hit = (await listDir(page, fid)).find((f) => f.file_name === part);
-    if (!hit) throw notFound(`not found: /${path.split('/').filter(Boolean).join('/')}; check the path with \`quark ls\``);
+    if (!hit) {
+      const parts = path.split('/').filter(Boolean);
+      const parent = `/${parts.slice(0, parts.indexOf(part)).join('/')}`;
+      throw notFound(`网盘里没有 /${parts.join('/')}`, `用 quark ls ${parent} 看这个目录里有什么`);
+    }
     fid = hit.fid;
     node = hit;
   }

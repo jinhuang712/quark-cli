@@ -1,4 +1,5 @@
 import { call, resolve } from './session.js';
+import { isoTime } from './format.js';
 
 export const isDir = (file) => file.dir ?? file.file_type === 0;
 
@@ -22,6 +23,15 @@ export function entry(file, path) {
     fid: file.fid,
   };
 }
+
+// The curated fields `ls` and `search` print by default (FEATURES.md → F17).
+export const brief = (file, path) => ({
+  name: file.file_name,
+  path,
+  type: isDir(file) ? 'dir' : 'file',
+  size: isDir(file) ? null : file.size,
+  modified: isoTime(file.l_updated_at),
+});
 
 // Folders first, then newest first.
 export const byDisplayOrder = (a, b) =>

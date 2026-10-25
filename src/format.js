@@ -8,6 +8,16 @@ export function size(n) {
 
 const pad = (n) => String(n).padStart(2, '0');
 
+// ISO 8601 with the local UTC offset, e.g. 2026-10-26T09:30:00+08:00.
+export function isoTime(ms) {
+  if (!ms) return null;
+  const d = new Date(ms);
+  const off = -d.getTimezoneOffset();
+  const sign = off >= 0 ? '+' : '-';
+  const tz = `${sign}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`;
+  return `${time(ms).replace(' ', 'T')}:${pad(d.getSeconds())}${tz}`;
+}
+
 export function time(ms) {
   const d = new Date(ms);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;

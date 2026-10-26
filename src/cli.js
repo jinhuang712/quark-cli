@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { open, isLoggedIn, openError } from "./session.js";
 import { EXIT, QuarkError, fail, loginError, usageError } from "./errors.js";
@@ -7,6 +7,7 @@ import { pickFormat, render, renderError } from "./output.js";
 import { commandHelp, nearest, topHelp } from "./help.js";
 
 const dir = fileURLToPath(new URL("./commands/", import.meta.url));
+const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
 // A command module default-exports (see help.js for the help metadata):
 //   { name, summary, usage, options?, auth?: false, run({ page, context, args, flags, emit, progress }) }
@@ -58,6 +59,10 @@ export async function main(argv) {
   const [name, ...rest] = argv;
   if (!name || isHelp(name) || name === "help") {
     console.log(topHelp(all));
+    return EXIT.ok;
+  }
+  if (name === "--version") {
+    console.log(`quark ${pkg.version}`);
     return EXIT.ok;
   }
   const cmd = all[name];

@@ -35,11 +35,13 @@ const signature = async (page, pre, meta) =>
   ).data.auth_key;
 
 async function oss(url, method, body, headers, what) {
-  const res = await fetch(url, {
+  const init = {
     method,
-    body,
     headers: { ...headers, "x-oss-user-agent": OSS_UA, referer: "https://pan.quark.cn/" },
-  });
+  };
+  // `method` is only ever PUT or POST, both of which carry a body.
+  init.body = body;
+  const res = await fetch(url, init);
   if (res.status !== 200) {
     const text = (await res.text()).slice(0, 200);
     throw new ProtocolError(`${what}: HTTP ${res.status} ${text}`);

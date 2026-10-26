@@ -17,7 +17,10 @@
     "promise/always-return": "off",
     "import/no-unassigned-import": "off",
     "unicorn/consistent-function-scoping": "off",
-    "no-underscore-dangle": "off"
+    "no-underscore-dangle": "off",
+    // Commands run one Quark request after another on purpose: one page, and a drive that
+    // flags bursts.
+    "no-await-in-loop": "off"
   },
   "ignorePatterns": ["dist/**", "build/**", "out/**", "coverage/**", "**/*.min.js", "**/*.d.ts"]
 }

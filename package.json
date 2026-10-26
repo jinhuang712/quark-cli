@@ -1,8 +1,21 @@
 {
   "name": "quark-cli",
   "version": "0.0.0",
-  "description": "Command line for Quark Drive (夸克网盘) driven through its web app",
+  "private": true,
+  "description": "夸克网盘命令行，主要给 agent 用：通过夸克网盘网页版的接口浏览、整理、上传下载和分享文件",
+  "keywords": [
+    "ai-agent",
+    "claude-code-skill",
+    "cli",
+    "quark",
+    "quark-drive"
+  ],
+  "homepage": "https://github.com/jinhuang712/quark-cli",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jinhuang712/quark-cli.git"
+  },
   "bin": {
     "quark": "bin/quark.js"
   },
@@ -10,11 +23,18 @@
   "scripts": {
     "test": "node --test test/unit/*.test.js",
     "test:e2e": "node --test test/e2e/*.test.js",
-    "test:failures": "node --test test/failures/*.test.js"
+    "test:failures": "node --test test/failures/*.test.js",
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
   },
   "dependencies": {
     "playwright-core": "^1.55.0",
     "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "oxfmt": "0.70.0",
+    "oxlint": "1.85.0"
   },
   "engines": {
     "node": ">=20"

@@ -11,6 +11,7 @@ import {
 } from "../ops.js";
 import { listDir } from "../session.js";
 import { sameName } from "../names.js";
+import { waitGone, waitSeen } from "../settle.js";
 import { fail, usageError } from "../errors.js";
 
 export default {
@@ -51,6 +52,10 @@ export default {
       filelist: [node.fid],
       exclude_fids: [],
     });
+    await Promise.all([
+      waitSeen(page, target.fid, node.fid, name),
+      waitGone(page, node.pdir_fid, [node.fid]),
+    ]);
     emit({
       data: { from: src, path: to, type: isDir(node) ? "dir" : "file", changed: true },
       lines: [to],

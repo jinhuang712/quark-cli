@@ -12,7 +12,7 @@ describe("e2e share", { timeout: 600_000 }, () => {
   const s = createSession("share");
   const R = s.root;
   const stamp = Date.now();
-  const fileName = `quark-e2e-${stamp}.txt`; // the share title is the file name; cleanup sweeps this prefix
+  const fileName = `quark-e2e-share-${stamp}.txt`; // the share title is the file name; cleanup sweeps this prefix
   let plain;
   let coded;
 

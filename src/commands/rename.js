@@ -1,6 +1,7 @@
 import { alreadyExists, isDir, join, need, normalize, parentOf } from "../ops.js";
 import { call, listDir } from "../session.js";
 import { sameName } from "../names.js";
+import { waitSeen } from "../settle.js";
 import { usageError } from "../errors.js";
 
 export default {
@@ -33,6 +34,7 @@ export default {
     const clash = (await listDir(page, dir.fid)).some((f) => sameName(f.file_name, name));
     if (clash) throw alreadyExists(to, "没有改名");
     await call(page, "POST", "/file/rename", { body: { fid: node.fid, file_name: name } });
+    await waitSeen(page, dir.fid, node.fid, name);
     emit({
       data: { from: path, path: to, type: isDir(node) ? "dir" : "file", changed: true },
       lines: [to],

@@ -1,5 +1,6 @@
 import { callMaybeTask, isDir, need, normalize, splitPath } from "../ops.js";
 import { listDir } from "../session.js";
+import { waitGone } from "../settle.js";
 import { fail, usageError } from "../errors.js";
 
 // Counts everything below a folder.
@@ -57,6 +58,16 @@ export default {
       filelist: nodes.map((n) => n.fid),
       exclude_fids: [],
     });
+    const byParent = Map.groupBy(nodes, (n) => n.pdir_fid);
+    await Promise.all(
+      [...byParent].map(([parent, list]) =>
+        waitGone(
+          page,
+          parent,
+          list.map((n) => n.fid),
+        ),
+      ),
+    );
     emit({
       data: { deleted: paths, folders, files, changed: true, note: NOTE },
       lines: paths,

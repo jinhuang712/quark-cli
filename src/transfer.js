@@ -5,6 +5,7 @@ import { pipeline } from "node:stream/promises";
 import { call, listDir } from "./session.js";
 import { QuarkError, fail, refused } from "./errors.js";
 import { sameName, stored } from "./names.js";
+import { waitSeen } from "./settle.js";
 import { directUpload } from "./direct-upload.js";
 
 // Creates one folder under `pdirFid` and returns its fid.
@@ -12,6 +13,7 @@ export async function makeFolder(page, pdirFid, name) {
   const r = await call(page, "POST", "/file", {
     body: { pdir_fid: pdirFid, file_name: name, dir_path: "", dir_init_lock: false },
   });
+  await waitSeen(page, pdirFid, r.data.fid, name);
   return r.data.fid;
 }
 

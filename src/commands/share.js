@@ -1,6 +1,7 @@
 import { resolve } from "../session.js";
 import { normalize } from "../browse.js";
 import { usageError } from "../errors.js";
+import { waitShare } from "../settle.js";
 import { EXPIRED_TYPE, makeCode, raw, ok, rejection, waitTask } from "../shares.js";
 
 export default {
@@ -45,6 +46,7 @@ export default {
     if (!ok(created)) throw rejection("创建分享", created);
     const task = await waitTask(page, created.data.task_id);
 
+    await waitShare(page, task.share_id, true);
     const info = await raw(page, "POST", "/share/password", { body: { share_id: task.share_id } });
     if (!ok(info)) throw rejection("读取分享链接", info);
     const { share_url: link, passcode: code } = info.data;

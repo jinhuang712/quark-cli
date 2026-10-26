@@ -1,5 +1,6 @@
 import { fail, usageError } from "../errors.js";
 import { call } from "../session.js";
+import { waitShare } from "../settle.js";
 import { listShares, pwdId, raw, ok, tokenError } from "../shares.js";
 
 export default {
@@ -19,8 +20,12 @@ export default {
     const id = pwdId(link);
     if (!id) throw usageError(`不是夸克分享链接: ${link}`, "链接形如 https://pan.quark.cn/s/xxxx");
 
-    const shares = await listShares(page);
-    const mine = shares.find((s) => s.pwd_id === id);
+    // A share made a moment ago can be missing from the list for a second or so.
+    let mine;
+    for (let i = 0; i < 5 && !mine; i++) {
+      if (i) await new Promise((done) => setTimeout(done, 400));
+      mine = (await listShares(page)).find((s) => s.pwd_id === id);
+    }
     if (!mine) {
       // Distinguish a dead link from someone else's live link.
       const tok = await raw(page, "POST", "/share/sharepage/token", {
@@ -39,6 +44,7 @@ export default {
       });
     }
     await call(page, "POST", "/share/delete", { body: { share_ids: [mine.share_id] } });
+    await waitShare(page, mine.share_id, false);
     emit({ data: { link, changed: true }, lines: [link], full: { link, changed: true, ...mine } });
   },
 };

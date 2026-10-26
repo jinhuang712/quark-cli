@@ -89,7 +89,7 @@ describe("e2e organize", { timeout: 600_000 }, () => {
     test("a name that is already taken is already_exists and changes nothing", async () => {
       await s.q("mkdir", `${R}/ren/taken`);
       const res = await s.q("rename", `${R}/ren/dir2`, "taken");
-      assert.equal(res.exit, 1);
+      assert.equal(res.exit, 1, res.stderr);
       assert.equal(s.err(res).code, "already_exists");
       assert.deepEqual(await s.names(`${R}/ren`), ["dir2", "h.txt", "taken"]);
     });
@@ -110,7 +110,7 @@ describe("e2e organize", { timeout: 600_000 }, () => {
 
     test("a missing path is not_found (exit 4); the root is usage", async () => {
       const res = await s.q("rename", `${R}/ren/nope`, "x");
-      assert.equal(res.exit, 4);
+      assert.equal(res.exit, 4, res.stderr);
       assert.equal(s.err(res).code, "not_found");
       const root = await s.q("rename", "/", "x");
       assert.equal(root.exit, 2);
@@ -143,9 +143,10 @@ describe("e2e organize", { timeout: 600_000 }, () => {
     });
 
     test("same name at the destination is already_exists and nothing moves", async () => {
-      await s.q("mkdir", `${R}/mv/src/f.txt`);
+      const mk = await s.q("mkdir", `${R}/mv/src/f.txt`);
+      assert.equal(mk.exit, 0, `mkdir: ${mk.stderr}`);
       const res = await s.q("mv", `${R}/mv/src/f.txt`, `${R}/mv/dest`);
-      assert.equal(res.exit, 1);
+      assert.equal(res.exit, 1, res.stderr);
       assert.equal(s.err(res).code, "already_exists");
       assert.deepEqual(await s.names(`${R}/mv/src`), ["f.txt"]);
       assert.deepEqual(await s.names(`${R}/mv/dest`), ["f.txt", "inner"]);
@@ -163,7 +164,7 @@ describe("e2e organize", { timeout: 600_000 }, () => {
 
     test("a file as destination is not_a_folder (exit 1)", async () => {
       const res = await s.q("mv", `${R}/mv/src/f.txt`, `${R}/mv/dest/f.txt`);
-      assert.equal(res.exit, 1);
+      assert.equal(res.exit, 1, res.stderr);
       assert.equal(s.err(res).code, "not_a_folder");
     });
 
@@ -241,7 +242,7 @@ describe("e2e organize", { timeout: 600_000 }, () => {
 
     test("nothing is deleted when one of several paths is missing", async () => {
       const res = await s.q("rm", `${R}/rm/two`, `${R}/rm/missing`, "--yes");
-      assert.equal(res.exit, 4);
+      assert.equal(res.exit, 4, res.stderr);
       assert.equal(s.err(res).code, "not_found");
       assert.deepEqual(await s.names(`${R}/rm`), ["one", "two"]);
     });

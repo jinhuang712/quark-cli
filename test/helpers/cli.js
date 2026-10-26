@@ -96,7 +96,7 @@ export function createSession(area) {
       const all = await q("shares", "--json");
       if (all.exit === 0) {
         for (const s of JSON.parse(all.stdout))
-          if (s.name?.startsWith("quark-e2e-")) await q("unshare", s.link);
+          if (s.name?.startsWith(`quark-e2e-${area}-`)) await q("unshare", s.link);
       }
       if (!root.startsWith(PREFIX)) throw new Error(`refusing to delete ${root}`);
       const gone = await q("rm", root, "--yes", "--raw");

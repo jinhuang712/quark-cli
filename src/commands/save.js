@@ -1,5 +1,6 @@
 import { listDir, resolve } from "../session.js";
 import { stored } from "../names.js";
+import { waitNamed } from "../settle.js";
 import { isDir, normalize } from "../browse.js";
 import { size } from "../format.js";
 import { fail, usageError } from "../errors.js";
@@ -132,6 +133,11 @@ export default {
     }
     const task = await waitTask(page, res.data.task_id);
 
+    await waitNamed(
+      page,
+      dir.fid,
+      items.map((i) => i.file_name),
+    );
     const saved = items.map((i) => `${dirPath === "/" ? "" : dirPath}/${i.file_name}`);
     emit({
       data: { saved, count: saved.length },

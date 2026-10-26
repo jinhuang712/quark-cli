@@ -1,27 +1,52 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="t d">
-  <title id="t">quark-cli：夸克网盘的命令行</title>
-  <desc id="d">一个终端窗口，运行 quark ls、quark upload 和 quark share</desc>
+  <title id="t">quark-cli：给 agent 用的夸克网盘命令行</title>
+  <desc id="d">夸克网盘的图标，旁边是一个终端窗口，运行 quark ls、quark upload 和一条失败时的结构化报错</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0f172a"/>
-      <stop offset="1" stop-color="#1e1b4b"/>
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#10224d"/>
     </linearGradient>
   </defs>
   <rect width="1200" height="360" rx="20" fill="url(#bg)"/>
-  <text x="60" y="110" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="64" font-weight="700" fill="#f8fafc">quark-cli</text>
-  <text x="60" y="160" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="26" fill="#cbd5e1">夸克网盘的命令行，给 agent 用</text>
-  <text x="60" y="215" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="20" fill="#94a3b8">YAML 输出 · 每条命令只做一件事</text>
-  <text x="60" y="248" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="20" fill="#94a3b8">失败时告诉 agent 下一步怎么做</text>
-  <rect x="560" y="50" width="590" height="260" rx="12" fill="#020617" stroke="#334155"/>
-  <circle cx="586" cy="76" r="6" fill="#ef4444"/>
-  <circle cx="608" cy="76" r="6" fill="#f59e0b"/>
-  <circle cx="630" cy="76" r="6" fill="#22c55e"/>
-  <g font-family="'SF Mono', Menlo, Consolas, monospace" font-size="18">
-    <text x="584" y="122" fill="#e2e8f0"><tspan fill="#22c55e">$</tspan> quark ls /WORK</text>
-    <text x="584" y="150" fill="#94a3b8">- name: 简历.pdf</text>
-    <text x="584" y="174" fill="#94a3b8">  size: 1.2 MB</text>
-    <text x="584" y="212" fill="#e2e8f0"><tspan fill="#22c55e">$</tspan> quark upload ./report.pdf /WORK</text>
-    <text x="584" y="240" fill="#94a3b8">count: 1</text>
-    <text x="584" y="278" fill="#e2e8f0"><tspan fill="#22c55e">$</tspan> quark share /WORK/report.pdf</text>
+
+  <!-- A disc with a round hole whose lower-right corner is filled in, in the drive's blue. -->
+  <mask id="hole" maskUnits="userSpaceOnUse" x="60" y="48" width="72" height="72">
+    <rect x="60" y="48" width="72" height="72" fill="#fff"/>
+    <circle cx="96" cy="84" r="18" fill="#000"/>
+    <rect x="101" y="84" width="14" height="14" rx="3" fill="#fff"/>
+  </mask>
+  <circle cx="96" cy="84" r="36" fill="#1a5cff" mask="url(#hole)"/>
+  <g font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif">
+    <text x="150" y="102" font-size="52" font-weight="700" fill="#f8fafc">quark-cli</text>
+    <text x="60" y="176" font-size="28" font-weight="600" fill="#e2e8f0">给 agent 用的夸克网盘命令行</text>
+    <text x="60" y="214" font-size="19" fill="#94a3b8">你只负责扫码登录，和批准有风险的操作</text>
+  </g>
+
+  <!-- Agent-facing promises -->
+  <g font-family="'SF Mono', Menlo, Consolas, monospace" font-size="16">
+    <rect x="60" y="250" width="86" height="30" rx="15" fill="#1e293b" stroke="#334155"/>
+    <text x="103" y="271" text-anchor="middle" fill="#7dd3fc">YAML</text>
+    <rect x="156" y="250" width="86" height="30" rx="15" fill="#1e293b" stroke="#334155"/>
+    <text x="199" y="271" text-anchor="middle" fill="#7dd3fc">--json</text>
+    <rect x="252" y="250" width="86" height="30" rx="15" fill="#1e293b" stroke="#334155"/>
+    <text x="295" y="271" text-anchor="middle" fill="#7dd3fc">--raw</text>
+    <rect x="348" y="250" width="132" height="30" rx="15" fill="#1e293b" stroke="#334155"/>
+    <text x="414" y="271" text-anchor="middle" fill="#fbbf24">exit 0–5</text>
+  </g>
+  <text x="60" y="320" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="14" fill="#64748b">非官方项目，与夸克无关</text>
+
+  <rect x="520" y="40" width="630" height="280" rx="12" fill="#020617" stroke="#334155"/>
+  <circle cx="546" cy="66" r="6" fill="#ef4444"/>
+  <circle cx="568" cy="66" r="6" fill="#f59e0b"/>
+  <circle cx="590" cy="66" r="6" fill="#22c55e"/>
+  <g font-family="'SF Mono', Menlo, Consolas, monospace" font-size="17">
+    <text x="544" y="108" fill="#e2e8f0"><tspan fill="#22c55e">$</tspan> quark upload ./report.pdf /WORK</text>
+    <text x="544" y="136" fill="#94a3b8">uploaded:</text>
+    <text x="544" y="160" fill="#94a3b8">  - path: /WORK/report.pdf</text>
+    <text x="544" y="184" fill="#94a3b8">    instant: false</text>
+    <text x="544" y="224" fill="#e2e8f0"><tspan fill="#22c55e">$</tspan> quark ls /NOPE</text>
+    <text x="544" y="252" fill="#f87171">error: 网盘里没有 /NOPE</text>
+    <text x="544" y="276" fill="#94a3b8" xml:space="preserve">code: not_found   exit: 4</text>
+    <text x="544" y="300" fill="#fbbf24">next: 用 quark ls / 看这个目录里有什么</text>
   </g>
 </svg>

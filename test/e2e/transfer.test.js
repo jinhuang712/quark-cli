@@ -171,6 +171,19 @@ describe("e2e transfer", { timeout: 600_000 }, () => {
       assert.ok(readFileSync(join(out, "a.bin")).equals(content));
     });
 
+    test("a multi-part file (12 MB, past the ranged-download threshold) round trips byte for byte", async () => {
+      const big = Buffer.concat([Buffer.from(`big ${stamp}\n`), randomBytes(12 * 1024 * 1024)]);
+      const up = await s.q("upload", s.localFile("big.bin", big), `${R}/up`);
+      assert.equal(up.exit, 0, up.stderr);
+      const down = await s.q("download", `${R}/up/big.bin`, out);
+      assert.equal(down.exit, 0, down.stderr);
+      assert.ok(readFileSync(join(out, "big.bin")).equals(big));
+      assert.deepEqual(
+        readdirSync(out).filter((n) => n.endsWith(".part")),
+        [],
+      );
+    });
+
     test("an instantly uploaded copy downloads identical too; --raw prints the local path", async () => {
       const res = await s.q("download", `${R}/up/copy-of-a.bin`, out, "--raw");
       assert.equal(res.exit, 0, res.stderr);
@@ -208,7 +221,7 @@ describe("e2e transfer", { timeout: 600_000 }, () => {
       const gone = await s.q("download", `${R}/up/nope.txt`, out);
       assert.equal(gone.exit, 4);
       assert.equal(s.err(gone).code, "not_found");
-      assert.deepEqual(readdirSync(out).toSorted(), ["a.bin", "copy-of-a.bin"]);
+      assert.deepEqual(readdirSync(out).toSorted(), ["a.bin", "big.bin", "copy-of-a.bin"]);
     });
 
     test("the wrong argument count is usage", async () => {

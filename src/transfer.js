@@ -1,5 +1,5 @@
 import { createWriteStream } from "node:fs";
-import { rename, rm } from "node:fs/promises";
+import { open as fopen, rename, rm } from "node:fs/promises";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { call, listDir } from "./session.js";
@@ -124,6 +124,63 @@ async function webUpload(page, { fid, folderName, local, name, size }) {
   }
 }
 
+// Files at least this big are fetched in ranges, a few connections at once, when Quark's
+// download host honours Range. Smaller ones are not worth the extra round trips.
+const RANGE_MIN = 8 * 1024 * 1024;
+const RANGE_PART = 4 * 1024 * 1024;
+const RANGE_CONCURRENCY = 4;
+
+// True when a one-byte ranged request is answered 206 with a Content-Range.
+async function supportsRange(url, headers) {
+  try {
+    const res = await fetch(url, { headers: { ...headers, range: "bytes=0-0" } });
+    await res.body?.cancel();
+    return res.status === 206 && (res.headers.get("content-range") ?? "").startsWith("bytes 0-0/");
+  } catch {
+    return false;
+  }
+}
+
+// Fills `part` from ranged requests, RANGE_CONCURRENCY at a time, each written at its offset.
+async function rangeDownload(url, headers, part, size, tick) {
+  const handle = await fopen(part, "w");
+  const parts = Math.ceil(size / RANGE_PART);
+  let next = 0;
+  let failure = null;
+  const worker = async () => {
+    while (!failure && next < parts) {
+      const i = next++;
+      const start = i * RANGE_PART;
+      const end = Math.min(start + RANGE_PART, size) - 1;
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await fetch(url, { headers: { ...headers, range: `bytes=${start}-${end}` } });
+        if (res.status !== 206 || !res.body) {
+          throw fail("error", `下载被拒绝，HTTP ${res.status}`, {
+            next: "稍后重试",
+            detail: `HTTP ${res.status}`,
+          });
+        }
+        let at = start;
+        for await (const chunk of res.body) {
+          await handle.write(chunk, 0, chunk.length, at);
+          at += chunk.length;
+          tick(chunk.length);
+        }
+        if (at !== end + 1) throw new Error(`第 ${i + 1} 段只收到 ${at - start} 字节`);
+      } catch (e) {
+        failure ??= e;
+      }
+    }
+  };
+  try {
+    await Promise.all(Array.from({ length: Math.min(RANGE_CONCURRENCY, parts) }, worker));
+  } finally {
+    await handle.close();
+  }
+  if (failure) throw failure;
+}
+
 // Downloads drive file `fid` to `dest` through a signed URL fetched with the session cookies.
 // Writes to `dest.part` and renames when complete; the partial file is removed on any failure.
 export async function downloadFile(page, context, { fid, dest, size, onProgress }) {
@@ -149,28 +206,34 @@ export async function downloadFile(page, context, { fid, dest, size, onProgress 
     const cookie = page.http
       ? page.cookieHeader(url)
       : (await context.cookies(url)).map((c) => `${c.name}=${c.value}`).join("; ");
-    const res = await fetch(url, {
-      headers: {
-        cookie,
-        referer: "https://pan.quark.cn/",
-        "user-agent": page.http ? page.userAgent() : await page.evaluate(() => navigator.userAgent),
-      },
-    });
-    if (!res.ok || !res.body) {
-      throw fail("error", `下载被拒绝，HTTP ${res.status}`, {
-        next: "稍后重试",
-        detail: `HTTP ${res.status}`,
-      });
-    }
+    const headers = {
+      cookie,
+      referer: "https://pan.quark.cn/",
+      "user-agent": page.http ? page.userAgent() : await page.evaluate(() => navigator.userAgent),
+    };
     let received = 0;
-    const counter = new Transform({
-      transform(chunk, _enc, cb) {
-        received += chunk.length;
-        onProgress?.(received, size);
-        cb(null, chunk);
-      },
-    });
-    await pipeline(Readable.fromWeb(res.body), counter, createWriteStream(part));
+    const tick = (n) => {
+      received += n;
+      onProgress?.(received, size);
+    };
+    if (size >= RANGE_MIN && (await supportsRange(url, headers))) {
+      await rangeDownload(url, headers, part, size, tick);
+    } else {
+      const res = await fetch(url, { headers });
+      if (!res.ok || !res.body) {
+        throw fail("error", `下载被拒绝，HTTP ${res.status}`, {
+          next: "稍后重试",
+          detail: `HTTP ${res.status}`,
+        });
+      }
+      const counter = new Transform({
+        transform(chunk, _enc, cb) {
+          tick(chunk.length);
+          cb(null, chunk);
+        },
+      });
+      await pipeline(Readable.fromWeb(res.body), counter, createWriteStream(part));
+    }
     if (size && received !== size) {
       throw fail("network", `下载不完整，只收到 ${received} / ${size} 字节`, { next: "重试" });
     }

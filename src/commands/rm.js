@@ -20,6 +20,7 @@ export default {
   name: "rm",
   usage: "rm <path>... --yes",
   summary: "删除文件或文件夹（进回收站）；没有 --yes 就不删，只报告计划",
+  http: true,
   group: "organize",
   args: [["<path>...", "要删除的网盘路径，可以给多个"]],
   flags: [["--yes", "确认删除；不加就什么都不删，退出码 2，错误里写明将要删什么"]],

@@ -50,6 +50,7 @@ export default {
   name: "save",
   usage: "save <link> <drive-dir> [--code <code>]",
   summary: "把别人分享的内容转存进已有的网盘目录",
+  http: true,
   group: "share",
   options: { code: { type: "string" } },
   args: [

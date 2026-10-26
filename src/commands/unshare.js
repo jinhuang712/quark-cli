@@ -7,6 +7,7 @@ export default {
   name: "unshare",
   usage: "unshare <link>",
   summary: "取消我创建的一条分享，文件本身不受影响",
+  http: true,
   group: "share",
   args: [["<link>", "分享链接，形如 https://pan.quark.cn/s/xxxx"]],
   examples: ["quark unshare https://pan.quark.cn/s/abcdef123456"],

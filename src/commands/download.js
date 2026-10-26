@@ -18,6 +18,7 @@ export default {
   name: "download",
   usage: "download <drive-path> <local-dir>",
   summary: "把一个网盘文件下载到已有的本地目录，文件名不变",
+  http: true,
   group: "transfer",
   args: [
     ["<drive-path>", "网盘文件路径；文件夹暂不支持"],

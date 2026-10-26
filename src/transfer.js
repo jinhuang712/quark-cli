@@ -12,6 +12,11 @@ import { directUpload } from "./direct-upload.js";
 export async function makeFolder(page, pdirFid, name) {
   const r = await call(page, "POST", "/file", {
     body: { pdir_fid: pdirFid, file_name: name, dir_path: "", dir_init_lock: false },
+  }).catch((e) => {
+    if (e.apiCode !== 23008) throw e;
+    throw fail("already_exists", `这里已经有 ${name}，什么都没建`, {
+      next: "换一个名字或目录，或者先看 quark ls",
+    });
   });
   await waitSeen(page, pdirFid, r.data.fid, name);
   return r.data.fid;
@@ -91,15 +96,16 @@ async function webUpload(page, { fid, folderName, local, name, size }) {
   );
   if (already) return { instant: false, name: already.file_name };
   const route = `https://pan.quark.cn/list#/list/all/${fid}-${encodeURIComponent(folderName)}`;
-  const watch = watchPre(page);
+  const browser = page.http ? await page.chrome() : page;
+  const watch = watchPre(browser);
   try {
-    await page.goto(route);
-    await page.waitForSelector("input[type=file]", { state: "attached" });
-    await page.locator("input[type=file]").first().setInputFiles(local);
+    await browser.goto(route);
+    await browser.waitForSelector("input[type=file]", { state: "attached" });
+    await browser.locator("input[type=file]").first().setInputFiles(local);
     const deadline = Date.now() + 60_000 + (size / (256 * 1024)) * 1000;
     while (Date.now() < deadline) {
       // eslint-disable-next-line no-await-in-loop
-      await page.waitForTimeout(1000);
+      await browser.waitForTimeout(1000);
       const failure = preError(watch.seen.get(name) ?? watch.seen.get(stored(name)), name);
       if (failure) throw failure;
       // eslint-disable-next-line no-await-in-loop
@@ -140,12 +146,14 @@ export async function downloadFile(page, context, { fid, dest, size, onProgress 
       throw fail("error", "夸克没有给出这个文件的下载链接", {
         next: "稍后重试；反复失败请让用户在夸克客户端确认文件能正常下载",
       });
-    const cookies = await context.cookies(url);
+    const cookie = page.http
+      ? page.cookieHeader(url)
+      : (await context.cookies(url)).map((c) => `${c.name}=${c.value}`).join("; ");
     const res = await fetch(url, {
       headers: {
-        cookie: cookies.map((c) => `${c.name}=${c.value}`).join("; "),
+        cookie,
         referer: "https://pan.quark.cn/",
-        "user-agent": await page.evaluate(() => navigator.userAgent),
+        "user-agent": page.http ? page.userAgent() : await page.evaluate(() => navigator.userAgent),
       },
     });
     if (!res.ok || !res.body) {

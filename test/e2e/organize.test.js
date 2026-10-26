@@ -263,7 +263,7 @@ describe("e2e organize", { timeout: 600_000 }, () => {
       await s.q("mkdir", `${R}/rm/x`);
       await s.q("mkdir", `${R}/rm/y`);
       const res = await s.q("rm", `${R}/rm/x`, `${R}/rm/y`, "--yes", "--raw");
-      assert.equal(res.stdout, `${R}/rm/x\n${R}/rm/y\n`);
+      assert.equal(res.stdout, `${R}/rm/x\n${R}/rm/y\n`, res.stderr);
       const again = await s.q("rm", `${R}/rm/x`, "--yes");
       assert.equal(again.exit, 4);
     });

@@ -1,5 +1,13 @@
 import { spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -61,6 +69,14 @@ export function createSession(area) {
   // Runs one CLI call against the real drive. `--json` is added by the caller when wanted.
   const q = async (...args) => {
     const res = await runQuark(args.map(String), { env });
+    // QUARK_E2E_LOG=<file>: keep the stderr of every call that failed, for hunting flaky runs.
+    if (process.env.QUARK_E2E_LOG && res.exit !== 0)
+      appendFileSync(
+        process.env.QUARK_E2E_LOG,
+        `${args.join(" ")} -> ${res.exit}
+${res.stderr}
+`,
+      );
     return res;
   };
   // Same, with stdout parsed as JSON (adds --json); fails loudly when the exit is not 0.

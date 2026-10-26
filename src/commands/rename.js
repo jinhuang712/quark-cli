@@ -1,4 +1,4 @@
-import { alreadyExists, isDir, join, need, normalize, parentOf } from "../ops.js";
+import { NAME_TAKEN, alreadyExists, isDir, join, need, normalize, parentOf } from "../ops.js";
 import { call, listDir } from "../session.js";
 import { sameName } from "../names.js";
 import { waitSeen } from "../settle.js";
@@ -8,6 +8,7 @@ export default {
   name: "rename",
   usage: "rename <path> <new-name>",
   summary: "只改名字，不换目录",
+  http: true,
   group: "organize",
   args: [
     ["<path>", "要改名的网盘路径"],
@@ -33,7 +34,12 @@ export default {
     const to = join(parent, name);
     const clash = (await listDir(page, dir.fid)).some((f) => sameName(f.file_name, name));
     if (clash) throw alreadyExists(to, "没有改名");
-    await call(page, "POST", "/file/rename", { body: { fid: node.fid, file_name: name } });
+    // The listing above can be a moment stale; Quark's own refusal of a taken name is final.
+    await call(page, "POST", "/file/rename", { body: { fid: node.fid, file_name: name } }).catch(
+      (e) => {
+        throw e.apiCode === NAME_TAKEN ? alreadyExists(to, "没有改名") : e;
+      },
+    );
     await waitSeen(page, dir.fid, node.fid, name);
     emit({
       data: { from: path, path: to, type: isDir(node) ? "dir" : "file", changed: true },

@@ -7,12 +7,13 @@ import { listShares } from "./shares.js";
 // not return before its effect can be seen, or the next command (ls, mv, share) works on stale
 // data. The waits below use the same listings the other commands read.
 const TRIES = 60;
-const EVERY_MS = 150;
+const EVERY_MS = 100;
 
 async function until(what, check) {
   for (let i = 0; i < TRIES; i++) {
     // eslint-disable-next-line no-await-in-loop
-    if (await check()) return;
+    const found = await check();
+    if (found) return found;
     // eslint-disable-next-line no-await-in-loop
     await new Promise((done) => setTimeout(done, EVERY_MS));
   }
@@ -29,13 +30,17 @@ const newest = async (page, dir) =>
     })
   ).data.list;
 
-// An item (optionally with this name) shows in folder `dir`.
+// An item (optionally with this name) shows in folder `dir`; resolves to its row.
 export const waitSeen = (page, dir, fid, name) =>
   until("操作", async () =>
-    (await newest(page, dir)).some(
+    (await newest(page, dir)).find(
       (f) => f.fid === fid && (name === undefined || sameName(f.file_name, name)),
     ),
   );
+
+// A name that Quark says exists shows in folder `dir`; resolves to its row.
+export const waitFind = (page, dir, name) =>
+  until("查找", async () => (await listDir(page, dir)).find((f) => sameName(f.file_name, name)));
 
 // None of `fids` shows in folder `dir` any more.
 export const waitGone = (page, dir, fids) =>

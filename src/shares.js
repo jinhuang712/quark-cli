@@ -50,7 +50,7 @@ export async function waitTask(page, taskId, { tries = 60 } = {}) {
         next: "稍后重试",
       });
     // eslint-disable-next-line no-await-in-loop
-    await sleep(500);
+    await sleep(200);
   }
   throw new QuarkError("夸克任务超时没有完成", { next: "稍后重试" });
 }

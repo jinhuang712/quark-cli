@@ -60,10 +60,10 @@ describe("cookie jar", () => {
   it("keeps cookies Quark sets back, replacing values by name and domain", () => {
     saveJar({ cookies: [], ua: "UA" });
     const s = new HttpSession({ ua: "UA", cookies: [cookie("__puus", ".quark.cn")] });
-    const headers = new Headers();
-    headers.append("set-cookie", "__puus=rotated; Domain=.quark.cn; Max-Age=3600; Path=/");
-    headers.append("set-cookie", "extra=1; Path=/");
-    s.absorb({ headers, url: "https://drive-pc.quark.cn/x" });
+    s.absorb(
+      ["__puus=rotated; Domain=.quark.cn; Max-Age=3600; Path=/", "extra=1; Path=/"],
+      "https://drive-pc.quark.cn/x",
+    );
     assert.equal(s.jar.cookies.find((c) => c.name === "__puus").value, "rotated");
     assert.equal(s.jar.cookies.find((c) => c.name === "extra").domain, "drive-pc.quark.cn");
     assert.equal(loadJar().cookies.find((c) => c.name === "__puus").value, "rotated");

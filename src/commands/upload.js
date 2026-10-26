@@ -31,6 +31,7 @@ export default {
   name: "upload",
   usage: "upload <local-path> <drive-dir>",
   summary: "把一个本地文件或文件夹传到已有的网盘目录",
+  http: true,
   group: "transfer",
   args: [
     ["<local-path>", "本地文件或文件夹；文件夹会在网盘目录里建同名文件夹，连内容一起传"],

@@ -8,6 +8,7 @@ export default {
   name: "share",
   usage: "share <path>... [--days 1|7|30|0] [--code]",
   summary: "为文件或文件夹创建分享链接，默认 7 天有效",
+  http: true,
   group: "share",
   options: { days: { type: "string", default: "7" }, code: { type: "boolean" } },
   args: [["<path>...", "一个或多个网盘路径，同一条链接分享它们"]],

@@ -1,8 +1,11 @@
-import { call, listDir } from "./session.js";
+import { call, listDir, resolve } from "./session.js";
 import { QuarkError, fail, usageError } from "./errors.js";
 import { isDir, normalize } from "./browse.js";
 import { sameName } from "./names.js";
-import { waitSeen } from "./settle.js";
+import { waitFind, waitSeen } from "./settle.js";
+
+// Quark's code for "a file or folder of that name is already there".
+export const NAME_TAKEN = 23008;
 
 export { isDir, normalize };
 
@@ -12,17 +15,15 @@ export const ROOT = { fid: "0", file_name: "/", dir: true };
 
 export const join = (dir, name) => `${dir === "/" ? "" : dir}/${name}`;
 
-// Resolves an absolute path to its node, or null when any part is missing.
+// Resolves an absolute path to its node, or null when any part is missing. One request for the
+// folders on the path, one listing for a file at the end.
 export async function find(page, path) {
-  let node = ROOT;
-  for (const part of splitPath(path)) {
-    if (!isDir(node)) return null;
-    // eslint-disable-next-line no-await-in-loop -- each step needs the previous folder's fid
-    const hit = (await listDir(page, node.fid)).find((f) => sameName(f.file_name, part));
-    if (!hit) return null;
-    node = hit;
+  try {
+    return await resolve(page, path);
+  } catch (e) {
+    if (e.code === "not_found") return null;
+    throw e;
   }
-  return node;
 }
 
 export const missing = (path) => {
@@ -51,11 +52,11 @@ export const alreadyExists = (path, what) =>
     next: `要保留已有的 ${path}：换个目标。要替换它：先 quark rename ${path} 新名字 留作备份，或者请用户同意后 quark rm ${path} --yes`,
   });
 
-export async function createFolder(page, pdirFid, name) {
+export async function createFolder(page, pdirFid, name, { wait = true } = {}) {
   const r = await call(page, "POST", "/file", {
     body: { pdir_fid: pdirFid, file_name: name, dir_path: "", dir_init_lock: false },
   });
-  await waitSeen(page, pdirFid, r.data.fid, name);
+  if (wait) await waitSeen(page, pdirFid, r.data.fid, name);
   return r.data.fid;
 }
 
@@ -64,6 +65,7 @@ export async function ensureDir(page, path) {
   let node = ROOT;
   let created = false;
   let walked = "/";
+  const pending = [];
   for (const part of splitPath(path)) {
     walked = join(walked, part);
     // eslint-disable-next-line no-await-in-loop -- each level depends on the previous fid
@@ -76,12 +78,32 @@ export async function ensureDir(page, path) {
     if (hit) {
       node = hit;
     } else {
+      // A new folder's children need only its fid, not a listing; the folders that must show
+      // up are the first and the last one created, which is what `ls` of their parents reads.
       // eslint-disable-next-line no-await-in-loop
-      const fid = await createFolder(page, node.fid, part);
+      let fid;
+      try {
+        fid = await createFolder(page, node.fid, part, { wait: false });
+      } catch (e) {
+        if (e.apiCode !== NAME_TAKEN) throw e;
+        // Quark has it although our listing did not: wait for the listing to catch up.
+        // eslint-disable-next-line no-await-in-loop
+        const found = await waitFind(page, node.fid, part);
+        if (!isDir(found)) {
+          throw fail("already_exists", `${walked} 是文件，不能在它的位置建文件夹`, {
+            next: `换个名字，或者先 quark rename ${walked} 新名字`,
+          });
+        }
+        node = found;
+        continue;
+      }
+      pending.push([node.fid, fid, part]);
       node = { fid, file_name: part, dir: true };
       created = true;
     }
   }
+  const ends = pending.length > 1 ? [pending[0], pending.at(-1)] : pending;
+  await Promise.all(ends.map(([dir, fid, name]) => waitSeen(page, dir, fid, name)));
   return { node, created };
 }
 
@@ -98,7 +120,7 @@ export async function waitTask(page, taskId) {
       });
     }
     // eslint-disable-next-line no-await-in-loop
-    await new Promise((done) => setTimeout(done, 500));
+    await new Promise((done) => setTimeout(done, 200));
   }
   throw new QuarkError(`夸克的任务 ${taskId} 太久没有完成`, {
     code: "network",

@@ -18,6 +18,7 @@ export default {
   name: "mv",
   usage: "mv <src> <dest-folder>",
   summary: "把文件或文件夹移到另一个已有的文件夹里，名字不变",
+  http: true,
   group: "organize",
   args: [
     ["<src>", "要移动的网盘路径"],
@@ -52,10 +53,21 @@ export default {
       filelist: [node.fid],
       exclude_fids: [],
     });
-    await Promise.all([
-      waitSeen(page, target.fid, node.fid, name),
+    const [moved] = await Promise.all([
+      waitSeen(page, target.fid, node.fid),
       waitGone(page, node.pdir_fid, [node.fid]),
     ]);
+    // Quark does not refuse a clash on move, it renames the arrival (name(1)). The listing check
+    // above can be a moment stale, so confirm the name the item really got.
+    if (!sameName(moved.file_name, name)) {
+      throw fail(
+        "already_exists",
+        `${to} 已经存在，夸克把移过去的项目改名成了 ${moved.file_name}`,
+        {
+          next: `项目现在在 ${join(dest, moved.file_name)}；要放回去：quark mv 它 ${parentOf(src).parent}；要保留：quark rename 它换个名字`,
+        },
+      );
+    }
     emit({
       data: { from: src, path: to, type: isDir(node) ? "dir" : "file", changed: true },
       lines: [to],

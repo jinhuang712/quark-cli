@@ -5,6 +5,7 @@ export default {
   name: "mkdir",
   usage: "mkdir <path>",
   summary: "新建文件夹，上级不存在时一并建出",
+  http: true,
   group: "organize",
   args: [["<path>", "要新建的网盘文件夹路径"]],
   examples: ["quark mkdir /备份/2026"],

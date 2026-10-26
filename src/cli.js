@@ -67,6 +67,8 @@ async function runOverHttp(cmd, ctx) {
   } catch (e) {
     if (e instanceof QuarkError && e.code === "not_logged_in") return false;
     throw e;
+  } finally {
+    await page.close();
   }
 }
 

@@ -7,7 +7,7 @@
 - 账号：`login`（只有二维码的小窗）、`whoami`、`logout`
 - 浏览：`ls`、`search`、`info`
 - 整理：`mkdir`、`mv`、`rename`、`rm`（不加 `--yes` 不会删，只输出删除计划）
-- 传输：`upload`、`download`
+- 传输：`upload`（直接调夸克上传接口，3 个文件并行，出意外退回网页上传）、`download`
 - 分享：`share`、`shares`、`unshare`、`save`
 - 每个命令只做一件事：目录必须已存在，同名一律失败，不弹出提问
 - 输出默认 YAML，另有 `--json`、`--markdown`、`--raw`、`--full`

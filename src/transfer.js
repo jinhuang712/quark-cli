@@ -5,6 +5,7 @@ import { pipeline } from "node:stream/promises";
 import { call, listDir } from "./session.js";
 import { QuarkError, fail, refused } from "./errors.js";
 import { sameName, stored } from "./names.js";
+import { directUpload } from "./direct-upload.js";
 
 // Creates one folder under `pdirFid` and returns its fid.
 export async function makeFolder(page, pdirFid, name) {
@@ -57,9 +58,36 @@ function preError(body, name) {
   return fail("error", `夸克拒绝了 ${name} 的上传`, { detail: msg });
 }
 
+// Quark's own answers that a retry through the web uploader cannot change.
+const FINAL = new Set(["no_space", "refused", "invalid_name"]);
+let directBroken = false;
+let webQueue = Promise.resolve();
+
+// Uploads one local file into the drive folder `fid`. Goes straight to Quark's upload API;
+// when that private protocol misbehaves, drops to the web app's file input for this and every
+// later file. Resolves to { instant, name }; throws a QuarkError when the drive refuses.
+export async function uploadFile(page, file) {
+  if (!directBroken) {
+    try {
+      return await directUpload(page, file);
+    } catch (e) {
+      if (e instanceof QuarkError && FINAL.has(e.code)) throw e;
+      directBroken = true;
+    }
+  }
+  // The web page is one shared tab, so fallback uploads take turns.
+  const turn = webQueue.then(() => webUpload(page, file));
+  webQueue = turn.catch(() => {});
+  return turn;
+}
+
 // Uploads one local file into the drive folder `fid` through the web app's file input.
-// Resolves to { instant }; throws a QuarkError when the drive refuses or the file never shows up.
-export async function uploadFile(page, { fid, folderName, local, name, size }) {
+async function webUpload(page, { fid, folderName, local, name, size }) {
+  // A direct attempt that died after Quark stored the file must not be uploaded twice.
+  const already = (await listDir(page, fid).catch(() => [])).find(
+    (f) => sameName(f.file_name, name) && f.size === size,
+  );
+  if (already) return { instant: false, name: already.file_name };
   const route = `https://pan.quark.cn/list#/list/all/${fid}-${encodeURIComponent(folderName)}`;
   const watch = watchPre(page);
   try {

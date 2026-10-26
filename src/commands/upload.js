@@ -6,6 +6,9 @@ import { asNetworkError, makeFolder, uploadFile } from "../transfer.js";
 import { fail } from "../errors.js";
 import { sameName } from "../names.js";
 
+// Quark's account is already under a risk notice; keep the parallelism modest.
+const CONCURRENCY = 3;
+
 // Expands a local path into drive-relative file entries and the folders to create.
 async function expand(local, rel, found) {
   const info = await stat(local);
@@ -111,29 +114,34 @@ export default {
       throw interrupted(asNetworkError(e, `新建文件夹 ${topPath}`));
     }
 
-    for (const file of files) {
-      const fid = info.isDirectory() ? folders.get(file.dir) : target.fid;
-      const folderName = basename(driveOf(info.isDirectory() ? file.dir : ".")) || "root";
-      progress(`正在上传 ${posix.join(driveOf(info.isDirectory() ? file.dir : "."), file.name)}`);
-      try {
-        // The web app's upload queue is shared, so files go one at a time.
-        // eslint-disable-next-line no-await-in-loop
-        const { instant, name: storedName } = await uploadFile(page, {
-          fid,
-          folderName,
-          local: file.local,
-          name: file.name,
-          size: file.size,
-        });
-        uploaded.push({
-          path: posix.join(driveOf(info.isDirectory() ? file.dir : "."), storedName),
-          size: file.size,
-          instant,
-        });
-      } catch (e) {
-        throw interrupted(e);
+    // A few workers pull files off one queue; the first failure stops new files and the
+    // ones already in flight finish, so `uploaded` is exactly what is on the drive.
+    const queue = files.map((file, index) => ({ file, index }));
+    const results = [];
+    let failure = null;
+    const worker = async () => {
+      while (!failure && queue.length) {
+        const { file, index } = queue.shift();
+        const dir = driveOf(info.isDirectory() ? file.dir : ".");
+        progress(`正在上传 ${posix.join(dir, file.name)}`);
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const { instant, name: storedName } = await uploadFile(page, {
+            fid: info.isDirectory() ? folders.get(file.dir) : target.fid,
+            folderName: basename(dir) || "root",
+            local: file.local,
+            name: file.name,
+            size: file.size,
+          });
+          results[index] = { path: posix.join(dir, storedName), size: file.size, instant };
+        } catch (e) {
+          failure ??= e;
+        }
       }
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
+    uploaded.push(...results.filter(Boolean));
+    if (failure) throw interrupted(failure);
 
     const data = {
       uploaded,

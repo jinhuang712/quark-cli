@@ -101,9 +101,20 @@ export async function main(argv) {
 }
 
 export async function run(argv) {
+  // Ctrl-C also kills Chrome, so what the command throws next is Playwright noise: swallow it.
+  // The command still unwinds (partial downloads are removed); a second Ctrl-C kills at once.
+  let interrupted = false;
+  process.once("SIGINT", () => {
+    interrupted = true;
+    setTimeout(() => process.exit(130), 3000).unref();
+  });
   try {
     process.exitCode = await main(argv);
   } catch (e) {
+    if (interrupted) {
+      process.exitCode = 130;
+      return;
+    }
     const err = e instanceof QuarkError ? e : new QuarkError(e.message);
     const format = ["--json", "--markdown"].find((f) => argv.includes(f))?.slice(2) ?? "yaml";
     console.error(

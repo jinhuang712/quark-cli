@@ -24,29 +24,20 @@
 
   <text x="60" y="296" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="14" fill="#64748b">非官方项目，与夸克无关</text>
 
-  <!-- Core features -->
-  <rect x="520" y="40" width="200" height="130" rx="12" fill="#0f1a33" stroke="#2a3a63"/>
-  <text x="538" y="78" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="22" font-weight="700" fill="#f8fafc">浏览</text>
-  <text x="538" y="110" font-family="'SF Mono', Menlo, Consolas, monospace" font-size="11.5" fill="#7dd3fc">ls · search · info</text>
-  <text x="538" y="140" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="14" fill="#94a3b8">目录、搜索、文件详情</text>
-  <rect x="735" y="40" width="200" height="130" rx="12" fill="#0f1a33" stroke="#2a3a63"/>
-  <text x="753" y="78" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="22" font-weight="700" fill="#f8fafc">整理</text>
-  <text x="753" y="110" font-family="'SF Mono', Menlo, Consolas, monospace" font-size="11.5" fill="#7dd3fc">mkdir · mv · rename · rm</text>
-  <text x="753" y="140" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="14" fill="#94a3b8">rm 不加 --yes 只给计划</text>
-  <rect x="950" y="40" width="200" height="130" rx="12" fill="#0f1a33" stroke="#2a3a63"/>
-  <text x="968" y="78" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="22" font-weight="700" fill="#f8fafc">传输</text>
-  <text x="968" y="110" font-family="'SF Mono', Menlo, Consolas, monospace" font-size="11.5" fill="#7dd3fc">upload · download</text>
-  <text x="968" y="140" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="14" fill="#94a3b8">上传 3 个并行，支持秒传</text>
-  <rect x="520" y="190" width="200" height="130" rx="12" fill="#0f1a33" stroke="#2a3a63"/>
-  <text x="538" y="228" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="22" font-weight="700" fill="#f8fafc">分享</text>
-  <text x="538" y="260" font-family="'SF Mono', Menlo, Consolas, monospace" font-size="11.5" fill="#7dd3fc">share · unshare · save</text>
-  <text x="538" y="290" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="14" fill="#94a3b8">建链接、取消、转存别人的</text>
-  <rect x="735" y="190" width="200" height="130" rx="12" fill="#0f1a33" stroke="#2a3a63"/>
-  <text x="753" y="228" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="22" font-weight="700" fill="#f8fafc">只做一件事</text>
-  <text x="753" y="260" font-family="-apple-system, 'PingFang SC', sans-serif" font-size="13" fill="#7dd3fc">不自动建目录、跳过、覆盖</text>
-  <text x="753" y="290" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="14" fill="#94a3b8">要几步就发几条命令</text>
-  <rect x="950" y="190" width="200" height="130" rx="12" fill="#0f1a33" stroke="#2a3a63"/>
-  <text x="968" y="228" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="22" font-weight="700" fill="#f8fafc">失败有下一步</text>
-  <text x="968" y="260" font-family="'SF Mono', Menlo, Consolas, monospace" font-size="11.5" fill="#7dd3fc">error · code · next</text>
-  <text x="968" y="290" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="14" fill="#94a3b8">退出码固定，0 到 5</text>
+  <!-- Happy path -->
+  <rect x="520" y="30" width="630" height="300" rx="12" fill="#020617" stroke="#334155"/>
+  <circle cx="546" cy="54" r="6" fill="#ef4444"/>
+  <circle cx="568" cy="54" r="6" fill="#f59e0b"/>
+  <circle cx="590" cy="54" r="6" fill="#22c55e"/>
+  <g font-family="'SF Mono', Menlo, Consolas, monospace" font-size="15" xml:space="preserve">
+    <text x="544" y="104" fill="#e2e8f0"><tspan fill="#22c55e">$</tspan> quark login<tspan fill="#64748b">   # 弹出小窗，扫码一次</tspan></text>
+    <text x="544" y="136" fill="#e2e8f0"><tspan fill="#22c55e">$</tspan> quark mkdir /WORK --raw</text>
+    <text x="544" y="158" fill="#94a3b8">/WORK</text>
+    <text x="544" y="190" fill="#e2e8f0"><tspan fill="#22c55e">$</tspan> quark upload ./report.pdf /WORK --raw</text>
+    <text x="544" y="212" fill="#94a3b8">/WORK/report.pdf</text>
+    <text x="544" y="244" fill="#e2e8f0"><tspan fill="#22c55e">$</tspan> quark share /WORK/report.pdf --code</text>
+    <text x="544" y="266" fill="#94a3b8">link: https://pan.quark.cn/s/1a2b3c4d5e6f</text>
+    <text x="544" y="288" fill="#94a3b8">code: k7Qp</text>
+    <text x="544" y="310" fill="#94a3b8">days: 7</text>
+  </g>
 </svg>

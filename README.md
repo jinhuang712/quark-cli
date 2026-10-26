@@ -65,7 +65,8 @@ quark share /WORK/report.pdf
 ## 已知限制
 
 - 只能用 Google Chrome，不支持 Edge 和 Firefox。Chrome 装在非标准位置时，设置环境变量 `QUARK_CHROME_PATH` 指向它的可执行文件。
-- 每条命令都会启动一次 Chrome，每条约 1.5 秒（`--help` 不启动，约 0.15 秒）。
+- 只读命令（`ls`、`search`、`info`、`whoami`、`shares`）直接带着登录时存下的 cookie 调接口，不启动 Chrome，每条约 0.4 秒，可以并行（不要超过 3 条）；会改动网盘的命令仍然启动一次 Chrome，每条约 1.5 秒。`--help` 约 0.15 秒。
+- 会改动网盘的命令要等到结果能被读到才返回，所以紧接着的 `ls`、`mv`、`share` 不会读到旧数据。
 - `download` 只能下载单个文件，夸克网页版不让下载 60MB 以上的文件（实测 50MB 能下）；没有断点续传，`upload` 也没有。
 - `upload` 直接调夸克的上传接口，出意外会退回网页上传，退回后每个小文件约 5 秒。
 - `save`（转存别人的分享）还没有成功转存过的测试。

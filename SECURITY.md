@@ -4,7 +4,7 @@
 
 `quark` 能读、改、删你夸克网盘里的一切，因为这就是它的用途。它只在你扫码登录之后才能这样做。
 
-- **登录态**保存在本机 `~/.quark-cli/profile`（一个 Chrome 用户目录），等于你的账号密码。不要提交到 git，不要拷给别人，不要上传到任何地方。`quark logout` 会清掉它。
+- **登录态**保存在本机 `~/.quark-cli/profile`（一个 Chrome 用户目录）和 `~/.quark-cli/profile.cookies.json`（登录时存下的 cookie 副本，只有你自己能读写），都等于你的账号密码。不要提交到 git，不要拷给别人，不要上传到任何地方。`quark logout` 会把两者都清掉。
 - **网络**：只访问夸克的域名（`pan.quark.cn`、`drive-pc.quark.cn`）和夸克给出的对象存储地址（上传、下载用）。`quark` 没有自己的服务器，不上报使用情况，不检查更新。
 - **本机文件**：只读你交给 `upload` 的路径，只往你交给 `download` 的目录写。
 - **有风险的操作**（`rm`、`unshare`）不加 `--yes` 只输出计划，不会执行；批准由人来做。

@@ -2,7 +2,7 @@
   "name": "quark-cli",
   "version": "0.1.0",
   "private": true,
-  "description": "夸克网盘命令行，主要给 agent 用：通过夸克网盘网页版的接口浏览、整理、上传下载和分享文件",
+  "description": "给 agent 用的夸克网盘命令行",
   "keywords": [
     "ai-agent",
     "claude-code-skill",

@@ -1,4 +1,4 @@
-import { call } from "./session.js";
+import { call, fetchJson } from "./session.js";
 import { QuarkError, fail, refused } from "./errors.js";
 
 const API = "https://drive-pc.quark.cn/1/clouddrive";
@@ -24,19 +24,7 @@ export function pwdId(link) {
 // Like session.call but hands back Quark's raw JSON so callers can map error codes.
 export async function raw(page, method, path, { query = {}, body } = {}) {
   const qs = new URLSearchParams({ pr: "ucpro", fr: "pc", ...query });
-  return page.evaluate(
-    async ({ url, verb, payload }) => {
-      const init = { method: verb, credentials: "include" };
-      if (payload)
-        Object.assign(init, {
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      const r = await fetch(url, init);
-      return r.json();
-    },
-    { url: `${API}${path}?${qs}`, verb: method, payload: body },
-  );
+  return fetchJson(page, `${API}${path}?${qs}`, { method, body });
 }
 
 export const ok = (res) => res.status === 200 && res.code === 0;

@@ -6,6 +6,7 @@ export default {
   name: "ls",
   usage: "ls [path]",
   summary: "列出一个文件夹里的内容，文件夹在前，新的在前",
+  http: true,
   group: "browse",
   args: [["[path]", "网盘文件夹路径，默认是根目录 /"]],
   examples: ["quark ls /WORK", "quark ls /WORK --raw"],

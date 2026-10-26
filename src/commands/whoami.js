@@ -5,6 +5,7 @@ export default {
   name: "whoami",
   usage: "whoami",
   summary: "显示账号名、已用和总容量、是否会员",
+  http: true,
   group: "account",
   auth: true,
   args: [],

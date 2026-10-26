@@ -15,6 +15,7 @@ export default {
   name: "shares",
   usage: "shares",
   summary: "列出我创建的所有分享",
+  http: true,
   group: "share",
   args: [],
   examples: ["quark shares", "quark shares --raw"],

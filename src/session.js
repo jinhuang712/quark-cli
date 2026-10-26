@@ -1,16 +1,15 @@
-import { chromium } from "playwright-core";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { PROFILE } from "./jar.js";
 import { QuarkError, fail, notFound, refused } from "./errors.js";
 import { FORBIDDEN, sameName } from "./names.js";
 
-const PROFILE = process.env.QUARK_PROFILE || join(homedir(), ".quark-cli", "profile");
 // Chrome in a non-standard location.
 const CHROME_PATH = process.env.QUARK_CHROME_PATH;
 const HOME = "https://pan.quark.cn/list";
 const API = "https://drive-pc.quark.cn/1/clouddrive";
 
 export async function open({ headed = false } = {}) {
+  // Loaded here: playwright takes ~100 ms to import, and most commands never start Chrome.
+  const { chromium } = await import("playwright-core");
   const context = await chromium.launchPersistentContext(PROFILE, {
     ...(CHROME_PATH ? { executablePath: CHROME_PATH } : { channel: "chrome" }),
     headless: !headed,
@@ -21,22 +20,28 @@ export async function open({ headed = false } = {}) {
   return { context, page };
 }
 
-// Runs a JSON request from inside the logged-in page so cookies and CORS behave like the web app.
-export async function call(page, method, path, { query = {}, body } = {}) {
-  const qs = new URLSearchParams({ pr: "ucpro", fr: "pc", ...query });
-  const res = await page.evaluate(
-    async ({ url, verb, payload }) => {
+// One JSON request. With an HttpSession it goes straight out from Node; with a Chrome page it
+// runs inside the logged-in page so cookies and CORS behave like the web app.
+export async function fetchJson(page, url, { method = "GET", body } = {}) {
+  if (page.http) return page.fetchJson(url, { method, body });
+  return page.evaluate(
+    async ({ href, verb, payload }) => {
       const init = { method: verb, credentials: "include" };
       if (payload)
         Object.assign(init, {
           headers: { "content-type": "application/json" },
           body: JSON.stringify(payload),
         });
-      const r = await fetch(url, init);
+      const r = await fetch(href, init);
       return r.json();
     },
-    { url: `${API}${path}?${qs}`, verb: method, payload: body },
+    { href: url, verb: method, payload: body },
   );
+}
+
+export async function call(page, method, path, { query = {}, body } = {}) {
+  const qs = new URLSearchParams({ pr: "ucpro", fr: "pc", ...query });
+  const res = await fetchJson(page, `${API}${path}?${qs}`, { method, body });
   if (res.status !== 200 || res.code !== 0) {
     const message = `${path}: ${res.message || JSON.stringify(res)}`;
     if (/bad file name/.test(res.message ?? "")) {
@@ -92,23 +97,43 @@ export function openError(e) {
 const PAGE = 200;
 const MAX_PAGES = 51;
 
+// Pages after the first are read a few at a time: the first page says how many there are.
+const PAGE_WORKERS = 3;
+
 async function listPages(page, fid, sort) {
-  const out = [];
-  let total = 0;
-  for (let p = 1; p <= MAX_PAGES; p++) {
-    // eslint-disable-next-line no-await-in-loop -- pages are read in order
-    const r = await call(page, "GET", "/file/sort", {
+  const get = (p) =>
+    call(page, "GET", "/file/sort", {
       query: { pdir_fid: fid, _page: p, _size: PAGE, _fetch_total: 1, _sort: sort },
     });
-    total = r.metadata?._total ?? 0;
-    out.push(...r.data.list);
-    if (out.length >= total || r.data.list.length === 0) break;
-  }
-  return { rows: out, total };
+  const first = await get(1);
+  const total = first.metadata?._total ?? 0;
+  const pages = Math.min(Math.ceil(total / PAGE), MAX_PAGES);
+  const rest = Array.from({ length: Math.max(pages - 1, 0) }, (_, i) => i + 2);
+  const byPage = new Map([[1, first.data.list]]);
+  const worker = async () => {
+    while (rest.length) {
+      const p = rest.shift();
+      // eslint-disable-next-line no-await-in-loop
+      byPage.set(p, (await get(p)).data.list);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(PAGE_WORKERS, rest.length) }, worker));
+  const rows = [...byPage.entries()].toSorted((x, y) => x[0] - y[0]).flatMap(([, list]) => list);
+  return { rows, total };
 }
 
 export async function listDir(page, fid) {
-  const forward = await listPages(page, fid, "file_type:asc,updated_at:desc");
+  // Right after a write, Quark's `_total` can run ahead of the rows it returns. Below the
+  // 10,200-row cap that is never a real shortfall, so read again.
+  const readForward = () => listPages(page, fid, "file_type:asc,updated_at:desc");
+  const short = (r) => r.rows.length < r.total && r.total <= PAGE * MAX_PAGES;
+  let forward = await readForward();
+  for (let i = 0; i < 8 && short(forward); i++) {
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((done) => setTimeout(done, 300));
+    // eslint-disable-next-line no-await-in-loop
+    forward = await readForward();
+  }
   if (forward.rows.length >= forward.total) return forward.rows;
   // Past the cap: read from the other end too, and merge. That reaches 2 x 10,200 rows.
   const backward = await listPages(page, fid, "file_type:desc,updated_at:asc");

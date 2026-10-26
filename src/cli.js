@@ -1,7 +1,8 @@
 import { parseArgs } from "node:util";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { open, isLoggedIn, openError } from "./session.js";
+import { HttpSession, exportJar, loadJar } from "./jar.js";
 import { EXIT, QuarkError, fail, loginError, usageError } from "./errors.js";
 import { pickFormat, render, renderError } from "./output.js";
 import { commandHelp, nearest, topHelp } from "./help.js";
@@ -54,9 +55,26 @@ function parse(cmd, rest) {
   }
 }
 
+// Runs a read-only command from Node with the saved cookies. Returns false when there is no
+// usable session (no jar, or Quark says it expired), so the caller can renew it through Chrome.
+async function runOverHttp(cmd, ctx) {
+  const jar = loadJar();
+  if (!jar) return false;
+  const page = new HttpSession(jar);
+  try {
+    await cmd.run({ ...ctx, page });
+    return true;
+  } catch (e) {
+    if (e instanceof QuarkError && e.code === "not_logged_in") return false;
+    throw e;
+  }
+}
+
 export async function main(argv) {
-  const all = await load();
   const [name, ...rest] = argv;
+  // Only the requested command is loaded; help and typos need the whole set.
+  const single = name && /^[a-z]+$/.test(name) && existsSync(`${dir}${name}.js`);
+  const all = single ? { [name]: (await import(`./commands/${name}.js`)).default } : await load();
   if (!name || isHelp(name) || name === "help") {
     console.log(topHelp(all));
     return EXIT.ok;
@@ -90,14 +108,20 @@ export async function main(argv) {
   if (cmd.auth === false) {
     await cmd.run(ctx);
   } else {
-    const { context, page } = await open().catch((e) => {
-      throw openError(e);
-    });
-    try {
-      if (!(await isLoggedIn(page))) throw loginError();
-      await cmd.run({ ...ctx, page, context });
-    } finally {
-      await context.close();
+    if (cmd.http && (await runOverHttp(cmd, ctx))) {
+      // done without starting Chrome
+    } else {
+      const { context, page } = await open().catch((e) => {
+        throw openError(e);
+      });
+      try {
+        if (!(await isLoggedIn(page))) throw loginError();
+        // Keep the jar fresh: it is what the Chrome-free commands use next time.
+        await exportJar(context, page);
+        await cmd.run({ ...ctx, page, context });
+      } finally {
+        await context.close();
+      }
     }
   }
   const text = result ? render(format, result, { full: flags.full }) : "";

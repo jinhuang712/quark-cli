@@ -8,6 +8,7 @@ export default {
   name: "search",
   usage: "search <keyword>",
   summary: "在整个网盘里按名字找文件和文件夹，最多 50 条",
+  http: true,
   group: "browse",
   args: [["<keyword>", "名字里要含有的关键词"]],
   examples: ["quark search 简历", "quark search 简历 --raw | xargs quark info"],

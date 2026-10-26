@@ -1,6 +1,5 @@
 import { rmSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { PROFILE, removeJar } from "../jar.js";
 
 export default {
   name: "logout",
@@ -14,8 +13,8 @@ export default {
   errors: [],
   related: ["login", "whoami"],
   async run({ emit }) {
-    const profile = process.env.QUARK_PROFILE || join(homedir(), ".quark-cli", "profile");
-    rmSync(profile, { recursive: true, force: true });
+    rmSync(PROFILE, { recursive: true, force: true });
+    removeJar();
     emit({ data: { logged_out: true }, lines: [] });
   },
 };

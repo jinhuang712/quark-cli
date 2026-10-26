@@ -7,6 +7,7 @@ export default {
   name: "info",
   usage: "info <path>",
   summary: "看一个文件或文件夹的大小、时间和 ID",
+  http: true,
   group: "browse",
   args: [["<path>", "网盘里的文件或文件夹路径"]],
   examples: ["quark info /WORK/简历.pdf", "quark info /WORK --json"],

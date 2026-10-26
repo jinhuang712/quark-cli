@@ -1,3 +1,4 @@
+import { exportJar } from "../jar.js";
 import { setTimeout as sleep } from "node:timers/promises";
 import { open, isLoggedIn, openError } from "../session.js";
 import { nickname } from "../account.js";
@@ -76,6 +77,7 @@ export default {
       }
       win = openQrWindow(await qrShot(page));
       await waitForScan(page, win);
+      await exportJar(context, page);
       const name = await nickname(page);
       emit({ data: { name }, lines: [name] });
     } finally {

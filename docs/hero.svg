@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="t d">
+  <title id="t">quark-cli：夸克网盘的命令行</title>
+  <desc id="d">一个终端窗口，运行 quark ls、quark upload 和 quark share</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#1e1b4b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="360" rx="20" fill="url(#bg)"/>
+  <text x="60" y="110" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="64" font-weight="700" fill="#f8fafc">quark-cli</text>
+  <text x="60" y="160" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="26" fill="#cbd5e1">夸克网盘的命令行，给 agent 用</text>
+  <text x="60" y="215" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="20" fill="#94a3b8">YAML 输出 · 每条命令只做一件事</text>
+  <text x="60" y="248" font-family="-apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif" font-size="20" fill="#94a3b8">失败时告诉 agent 下一步怎么做</text>
+  <rect x="560" y="50" width="590" height="260" rx="12" fill="#020617" stroke="#334155"/>
+  <circle cx="586" cy="76" r="6" fill="#ef4444"/>
+  <circle cx="608" cy="76" r="6" fill="#f59e0b"/>
+  <circle cx="630" cy="76" r="6" fill="#22c55e"/>
+  <g font-family="'SF Mono', Menlo, Consolas, monospace" font-size="18">
+    <text x="584" y="122" fill="#e2e8f0"><tspan fill="#22c55e">$</tspan> quark ls /WORK</text>
+    <text x="584" y="150" fill="#94a3b8">- name: 简历.pdf</text>
+    <text x="584" y="174" fill="#94a3b8">  size: 1.2 MB</text>
+    <text x="584" y="212" fill="#e2e8f0"><tspan fill="#22c55e">$</tspan> quark upload ./report.pdf /WORK</text>
+    <text x="584" y="240" fill="#94a3b8">count: 1</text>
+    <text x="584" y="278" fill="#e2e8f0"><tspan fill="#22c55e">$</tspan> quark share /WORK/report.pdf</text>
+  </g>
+</svg>

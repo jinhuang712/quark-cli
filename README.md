@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/hero.svg" alt="quark-cli：夸克网盘的命令行" width="100%">
+  <img src="docs/hero.svg" alt="quark-cli：给 agent 用的夸克网盘命令行" width="100%">
 </p>
 
 # quark-cli

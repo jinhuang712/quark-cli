@@ -242,7 +242,10 @@ describe("e2e browse", { timeout: 600_000 }, () => {
       assert.equal(typeof me.member, "boolean");
       if (me.member) assert.match(me.member_until, /^\d{4}-\d{2}-\d{2}$/);
       else assert.equal(me.member_until, null);
-      assert.deepEqual(await s.json("whoami"), me);
+      // Other tests upload while this one runs, so the used space moves between two calls.
+      const { used: _u, used_human: _h, ...stable } = me;
+      const { used: _u2, used_human: _h2, ...again } = await s.json("whoami");
+      assert.deepEqual(again, stable);
       assert.match((await s.q("whoami", "--markdown")).stdout, /^- name: .+$/m);
       assert.equal((await s.q("whoami", "--raw")).stdout, `${me.name}\n`);
       const full = await s.json("whoami", "--full");

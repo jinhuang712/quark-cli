@@ -76,7 +76,7 @@ describe("e2e organize", { timeout: 600_000 }, () => {
       });
       assert.deepEqual(await s.names(`${R}/ren`), ["g.txt"]);
       const raw = await s.q("rename", `${R}/ren/g.txt`, "h.txt", "--raw");
-      assert.equal(raw.stdout, `${R}/ren/h.txt\n`);
+      assert.equal(raw.stdout, `${R}/ren/h.txt\n`, raw.stderr);
     });
 
     test("renames a folder", async () => {
@@ -155,7 +155,7 @@ describe("e2e organize", { timeout: 600_000 }, () => {
       await s.q("mkdir", `${R}/mv/self/child`);
       for (const dest of [`${R}/mv/self`, `${R}/mv/self/child`]) {
         const res = await s.q("mv", `${R}/mv/self`, dest);
-        assert.equal(res.exit, 2, dest);
+        assert.equal(res.exit, 2, `${dest}\n${res.stderr}`);
         assert.equal(s.err(res).code, "usage");
       }
       assert.deepEqual(await s.names(`${R}/mv/self`), ["child"]);

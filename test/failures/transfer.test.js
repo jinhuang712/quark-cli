@@ -118,12 +118,15 @@ describe("transfer failures", { timeout: 600_000 }, () => {
     it("going offline mid-tree: network error lists uploaded files and suggests rm of the new directory", async () => {
       const tree = join(local, "tree");
       mkdirSync(tree);
-      for (const n of ["a.bin", "b.bin", "c.bin"]) writeFileSync(join(tree, n), randomBytes(4096));
+      const names = ["a.bin", "b.bin", "c.bin", "d.bin", "e.bin"];
+      for (const n of names) writeFileSync(join(tree, n), randomBytes(4096));
+      // Three files go at once, so the fourth only starts after one has finished: cutting the
+      // network there leaves at least one file uploaded and the last one never started.
       const progress = (msg) => {
-        // Cut the network right before the second file starts.
-        if (msg.includes("b.bin")) context.setOffline(true);
+        if (msg.includes("d.bin")) context.setOffline(true);
       };
       let emitted;
+      let reported = [];
       await assert.rejects(
         upload.run({ page, args: [tree, `/${TEST_ROOT}`], emit: (r) => (emitted = r), progress }),
         (e) => {
@@ -132,20 +135,25 @@ describe("transfer failures", { timeout: 600_000 }, () => {
           );
           assert.equal(e.code, "network");
           assert.equal(e.exit, 1);
-          assert.match(e.message, /已传好 1 个文件/);
-          assert.ok(e.message.includes(`/${TEST_ROOT}/tree/a.bin`), e.message);
-          assert.ok(!e.message.includes("tree/b.bin、") && !/已传好.*b\.bin/.test(e.message));
+          assert.match(e.message, /已传好 [1-4] 个文件/);
+          assert.ok(!e.message.includes("e.bin"), e.message);
           assert.ok(e.next.includes(`quark rm /${TEST_ROOT}/tree --yes`), e.next);
+          reported = [...e.message.matchAll(/\/tree\/([a-e])\.bin/g)].map((m) => m[1]);
           return true;
         },
       );
       assert.equal(emitted, undefined);
+      assert.ok(reported.length >= 1, "at least one file was reported as uploaded");
       await context.setOffline(false);
-      // The tree really is half there: the folder and exactly the first file.
+      // The tree really is half there: every file the error lists is on the drive, and the
+      // last file never started.
       await page.goto("https://pan.quark.cn/list", { waitUntil: "domcontentloaded" });
-      const node = await resolve(page, `/${TEST_ROOT}/tree/a.bin`);
-      assert.equal(node.size, 4096);
-      await assert.rejects(resolve(page, `/${TEST_ROOT}/tree/c.bin`), { code: "not_found" });
+      for (const n of reported) {
+        // eslint-disable-next-line no-await-in-loop
+        const node = await resolve(page, `/${TEST_ROOT}/tree/${n}.bin`);
+        assert.equal(node.size, 4096);
+      }
+      await assert.rejects(resolve(page, `/${TEST_ROOT}/tree/e.bin`), { code: "not_found" });
     });
 
     // This verifies OUR mapping of a guessed capacity message to no_space, not Quark's real

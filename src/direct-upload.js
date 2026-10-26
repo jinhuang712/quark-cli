@@ -81,7 +81,10 @@ export async function directUpload(page, { fid, local, name, size }) {
 
   const { md5, sha1 } = await hashFile(local);
   const hash = await call(page, "POST", "/file/update/hash", { body: { md5, sha1, task_id } });
-  if (hash.data.finish) return { instant: true, name: hash.data.file_name ?? name };
+  if (hash.data.finish) {
+    await waitListed(page, fid, pre.data.fid, name);
+    return { instant: true, name: hash.data.file_name ?? name };
+  }
 
   const host = `https://${bucket}.${upload_url.replace(/^https?:\/\//, "")}/${obj_key}`;
   const object = `/${bucket}/${obj_key}`;
@@ -141,5 +144,21 @@ export async function directUpload(page, { fid, local, name, size }) {
     "提交分片",
   );
   const done = await call(page, "POST", "/file/upload/finish", { body: { obj_key, task_id } });
+  await waitListed(page, fid, done.data.fid ?? pre.data.fid, name);
   return { instant: false, name: done.data.file_name ?? name };
+}
+
+// Quark says "finish" a moment before the file shows up in listings, and a command that runs
+// right after `upload` (ls, mv, share) would not find it. Wait for it, newest files first.
+async function waitListed(page, dir, fid, name) {
+  for (let i = 0; i < 40; i++) {
+    // eslint-disable-next-line no-await-in-loop
+    const r = await call(page, "GET", "/file/sort", {
+      query: { pdir_fid: dir, _page: 1, _size: 50, _sort: "file_type:desc,updated_at:desc" },
+    });
+    if (r.data.list.some((f) => f.fid === fid)) return;
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((done) => setTimeout(done, 500));
+  }
+  throw new ProtocolError(`${name} 传完 20 秒后夸克还没把它列出来`);
 }

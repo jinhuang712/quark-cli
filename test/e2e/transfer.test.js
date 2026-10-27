@@ -212,12 +212,36 @@ describe("e2e transfer", { timeout: 600_000 }, () => {
       assert.equal(s.err(res).code, "not_a_folder");
     });
 
-    test("a drive folder is an error (exit 1) and a missing drive path is not_found (exit 4)", async () => {
-      const dir = await s.q("download", `${R}/up/tree`, out);
-      assert.equal(dir.exit, 1);
-      const e = s.err(dir);
-      assert.equal(e.code, "error");
-      assert.match(e.next, /quark ls/);
+    test("a drive folder downloads whole, empty folders included; a second run skips what is there", async () => {
+      const dest = s.local("tree-out");
+      mkdirSync(dest, { recursive: true });
+      const first = await s.json("download", `${R}/up/tree`, dest);
+      assert.equal(first.count, 3);
+      assert.equal(first.skipped, 0);
+      assert.equal(first.path, join(dest, "tree"));
+      assert.equal(readFileSync(join(dest, "tree", "top.txt"), "utf8"), `top ${stamp}\n`);
+      assert.equal(readFileSync(join(dest, "tree", "sub", "mid.txt"), "utf8"), `mid ${stamp}\n`);
+      assert.equal(
+        readFileSync(join(dest, "tree", "sub", "deep", "low.txt"), "utf8"),
+        `low ${stamp}\n`,
+      );
+      assert.ok(existsSync(join(dest, "tree", "empty")));
+      const second = await s.json("download", `${R}/up/tree`, dest);
+      assert.equal(second.count, 0);
+      assert.equal(second.skipped, 3);
+    });
+
+    test("a local file of the same name but other content stops a folder download before it writes anything", async () => {
+      const dest = s.local("tree-clash");
+      mkdirSync(join(dest, "tree"), { recursive: true });
+      writeFileSync(join(dest, "tree", "top.txt"), "different");
+      const res = await s.q("download", `${R}/up/tree`, dest);
+      assert.equal(res.exit, 1);
+      assert.equal(s.err(res).code, "already_exists");
+      assert.deepEqual(readdirSync(join(dest, "tree")), ["top.txt"]);
+    });
+
+    test("a missing drive path is not_found (exit 4)", async () => {
       const gone = await s.q("download", `${R}/up/nope.txt`, out);
       assert.equal(gone.exit, 4);
       assert.equal(s.err(gone).code, "not_found");

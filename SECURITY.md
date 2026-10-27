@@ -6,7 +6,9 @@
 
 - **登录态**保存在本机 `~/.quark-cli/profile`（一个 Chrome 用户目录）和 `~/.quark-cli/profile.cookies.json`（登录时存下的 cookie 副本，只有你自己能读写），都等于你的账号密码。不要提交到 git，不要拷给别人，不要上传到任何地方。`quark logout` 会把两者都清掉。
 - **网络**：只访问夸克的域名（`pan.quark.cn`、`drive-pc.quark.cn`）和夸克给出的对象存储地址（上传、下载用）。`quark` 没有自己的服务器，不上报使用情况，不检查更新。
-- **本机文件**：只读你交给 `upload` 的路径，只往你交给 `download` 的目录写。
+- **本机文件**：只读你交给 `upload` 的路径，只往你交给 `download` 的目录写。下载中断时会在那里留下 `<文件>.part` 和 `.part.json`。
+- **`download --as-desktop`**：取下载链接的那一次请求带夸克桌面客户端的 User-Agent。这是模仿客户端标识，可能违反夸克的使用条款，也可能被风控；默认关，只在你主动加参数、且网页身份被拒时才用。
+- **`download --share-big`** 会在你的网盘上创建一条 7 天、带提取码的分享链接，用 `quark unshare` 取消。
 - **有风险的操作**（`rm`、`unshare`）不加 `--yes` 只输出计划，不会执行；批准由人来做。
 
 ## 夸克这一侧的风险

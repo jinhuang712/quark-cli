@@ -34,16 +34,20 @@ async function walk(page, node, rel, found) {
 
 export default {
   name: "download",
-  usage: "download <drive-path> <local-dir> [--share-big]",
+  usage: "download <drive-path> <local-dir> [--as-desktop] [--share-big]",
   summary: "把一个网盘文件或文件夹下载到已有的本地目录，名字不变",
   http: true,
   group: "transfer",
-  options: { "share-big": { type: "boolean" } },
+  options: { "share-big": { type: "boolean" }, "as-desktop": { type: "boolean" } },
   args: [
     ["<drive-path>", "网盘文件或文件夹路径；文件夹连内容一起下载"],
     ["<local-dir>", "已存在的本地目录，不会自动新建"],
   ],
   flags: [
+    [
+      "--as-desktop",
+      "夸克网页版不让下载的大文件（约 60MB 起）改以夸克桌面客户端的身份取下载链接再试一次；可能违反夸克的使用条款，默认关",
+    ],
     [
       "--share-big",
       "夸克网页版不让下载的大文件（约 60MB 起）改为建一条 7 天、带提取码的分享链接，不报错",
@@ -97,6 +101,7 @@ export default {
           dest,
           size: file.size,
           updated: file.updated_at ?? file.l_updated_at,
+          asDesktop: flags["as-desktop"],
           onProgress,
         });
         return file.size;

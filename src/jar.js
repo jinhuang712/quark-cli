@@ -102,6 +102,12 @@ export class HttpSession {
     return this.jar.ua;
   }
 
+  // The same session (cookies, connections, saved jar) whose API calls carry another
+  // User-Agent. The saved jar keeps the browser's.
+  withUserAgent(ua) {
+    return Object.assign(Object.create(this), { uaOverride: ua });
+  }
+
   // One HTTPS exchange. Resolves { status, setCookie, text }; rejects with an Error whose
   // `sent` says whether the request may have reached Quark (false: it died while connecting).
   exchange(url, { method, headers, payload }) {
@@ -142,7 +148,7 @@ export class HttpSession {
     const payload = body ? JSON.stringify(body) : undefined;
     const headers = {
       cookie: this.cookieHeader(url),
-      "user-agent": this.jar.ua,
+      "user-agent": this.uaOverride ?? this.jar.ua,
       referer: "https://pan.quark.cn/",
       origin: "https://pan.quark.cn",
       accept: "application/json",

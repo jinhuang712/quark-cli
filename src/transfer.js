@@ -125,6 +125,10 @@ async function webUpload(page, { fid, folderName, local, name, size }) {
   }
 }
 
+// The User-Agent of Quark's own desktop app, as other open-source clients (OpenList) send it.
+const DESKTOP_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) quark-cloud-drive/2.5.20 Chrome/100.0.4896.160 Electron/18.3.5.4-b478491100 Safari/537.36 Channel/pckk_other_ch";
+
 // Bytes of the `.part` file worth continuing from: only when the sidecar says it belongs to
 // this very file (same fid, size and modification time) and it is shorter than the whole.
 async function resumePoint(part, meta, want) {
@@ -142,23 +146,38 @@ async function resumePoint(part, meta, want) {
 // Writes to `dest.part` and renames when complete. A download that stops midway leaves the
 // `.part` file and a `.part.json` sidecar, and the next call continues from there when Quark's
 // host honours Range. `updated` is the file's modification time, to tell a changed file apart.
-export async function downloadFile(page, context, { fid, dest, size, updated, onProgress }) {
+export async function downloadFile(
+  page,
+  context,
+  { fid, dest, size, updated, asDesktop, onProgress },
+) {
   const part = `${dest}.part`;
   const meta = `${part}.json`;
   try {
-    const r = await call(page, "POST", "/file/download", { body: { fids: [fid] } }).catch((e) => {
-      if (/size limit/i.test(e.message)) {
-        const big = refused(
-          `夸克网页版不让下载这么大的文件（${size ? `${(size / 1048576).toFixed(0)}MB` : "大文件"}），实测 50MB 能下、60MB 起不行`,
-          {
-            next: "请用户在夸克客户端里下载；或者加 --share-big 让 quark 改为给这个文件建一个分享链接，让用户打开链接下载",
-            detail: e.message,
-          },
-        );
-        big.tooBig = true;
-        throw big;
+    const ask = (who) => call(who, "POST", "/file/download", { body: { fids: [fid] } });
+    const tooBig = (e) => /size limit/i.test(e.message);
+    const r = await ask(page).catch(async (first) => {
+      if (!tooBig(first)) throw first;
+      // Quark's size limit is answered per client: the same file is handed out to the desktop
+      // app's User-Agent. Only on request, and only after the browser one was refused.
+      let last = first;
+      if (asDesktop && page.withUserAgent) {
+        try {
+          return await ask(page.withUserAgent(DESKTOP_UA));
+        } catch (e) {
+          if (!tooBig(e)) throw e;
+          last = e;
+        }
       }
-      throw e;
+      const big = refused(
+        `夸克网页版不让下载这么大的文件（${size ? `${(size / 1048576).toFixed(0)}MB` : "大文件"}），实测 50MB 能下、60MB 起不行`,
+        {
+          next: "请用户在夸克客户端里下载；或者加 --as-desktop 让 quark 以夸克桌面客户端的身份取下载链接再试一次（可能违反夸克的使用条款，要先问过用户）；或者加 --share-big 改为给这个文件建一个分享链接",
+          detail: last.message,
+        },
+      );
+      big.tooBig = true;
+      throw big;
     });
     const url = r.data?.[0]?.download_url;
     if (!url)

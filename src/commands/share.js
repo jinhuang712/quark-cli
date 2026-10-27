@@ -1,8 +1,8 @@
 import { resolve } from "../session.js";
 import { normalize } from "../browse.js";
 import { usageError } from "../errors.js";
-import { waitShare } from "../settle.js";
-import { EXPIRED_TYPE, makeCode, raw, ok, rejection, waitTask } from "../shares.js";
+import { EXPIRED_TYPE } from "../shares.js";
+import { createShare } from "../share-create.js";
 
 export default {
   name: "share",
@@ -35,32 +35,12 @@ export default {
 
     const paths = args.map(normalize);
     const nodes = await Promise.all(paths.map((p) => resolve(page, p)));
-    const passcode = flags.code ? makeCode() : undefined;
-    const body = {
-      fid_list: nodes.map((n) => n.fid),
-      title: nodes[0].file_name,
-      url_type: passcode ? 2 : 1,
-      expired_type: expired,
-      ...(passcode && { passcode }),
-    };
-    const created = await raw(page, "POST", "/share", { body });
-    if (!ok(created)) throw rejection("创建分享", created);
-    const task = await waitTask(page, created.data.task_id);
-
-    await waitShare(page, task.share_id, true);
-    const info = await raw(page, "POST", "/share/password", { body: { share_id: task.share_id } });
-    if (!ok(info)) throw rejection("读取分享链接", info);
-    const { share_url: link, passcode: code } = info.data;
+    const made = await createShare(page, nodes, { days: Number(flags.days), withCode: flags.code });
+    const { share_url: link, passcode: code } = made;
     emit({
       data: { link, ...(code && { code }), days: Number(flags.days), files: paths },
       lines: code ? [link, code] : [link],
-      full: {
-        ...info.data,
-        task_id: created.data.task_id,
-        share_id: task.share_id,
-        days: Number(flags.days),
-        files: paths,
-      },
+      full: { ...made, days: Number(flags.days), files: paths },
     });
   },
 };

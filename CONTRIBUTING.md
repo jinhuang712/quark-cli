@@ -11,6 +11,7 @@
 - **每个命令只做一件事**：不隐式建目录，不自动跳过、覆盖或合并，不弹出提问。
 - **失败要给 agent 能照做的话**：`error`、`code`、`exit`、`next`。新增错误码要同步 `src/errors.js`、`FEATURES.md`、`CLI.md` 和 skill。
 - 输出默认 YAML，另有 `--json`、`--markdown`、`--raw`、`--full`；新命令要全部支持。
+- **FEATURES.md 已经过维护者批准**：改动会让批准失效，动手前先确认。
 
 ## 开发
 

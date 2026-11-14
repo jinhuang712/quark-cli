@@ -2,7 +2,14 @@
 // Every drive write lives under /quark-cli-test-fail-<timestamp>, deleted in `after`.
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
@@ -89,21 +96,26 @@ describe("transfer failures", { timeout: 600_000 }, () => {
       ["connection reset mid-way", true],
       ["stream ending early", false],
     ]) {
-      it(`${label}: code network, exit 1, no .part left`, async () => {
+      it(`${label}: code network, exit 1; .part and .part.json stay, and the next run finishes the file`, async () => {
         const dir = mkdtempSync(join(local, "dl-"));
+        const dest = join(dir, "big.bin");
         cutAfter(1024 * 1024, { error });
         try {
-          await assert.rejects(
-            downloadFile(page, context, { fid, dest: join(dir, "big.bin"), size }),
-            {
-              code: "network",
-              exit: 1,
-            },
-          );
+          await assert.rejects(downloadFile(page, context, { fid, dest, size }), {
+            code: "network",
+            exit: 1,
+          });
         } finally {
           globalThis.fetch = realFetch;
         }
-        assert.deepEqual(readdirSync(dir), [], "neither big.bin nor big.bin.part may remain");
+        assert.deepEqual(
+          readdirSync(dir).toSorted(),
+          ["big.bin.part", "big.bin.part.json"],
+          "a cut leaves the partial file and its sidecar for the next run, never big.bin",
+        );
+        await downloadFile(page, context, { fid, dest, size });
+        assert.deepEqual(readdirSync(dir), ["big.bin"]);
+        assert.ok(readFileSync(dest).equals(readFileSync(join(local, "big.bin"))));
       });
     }
 

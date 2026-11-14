@@ -224,7 +224,8 @@ export async function downloadFile(
       await pipeline(Readable.fromWeb(res.body), counter, createWriteStream(part));
     }
     if (size && received !== size) {
-      await rm(part, { force: true });
+      // A stream that ends early is a cut connection like any other: the `.part` file and its
+      // sidecar stay, and the next run continues from them (or starts over if they do not fit).
       throw fail("network", `下载不完整，只收到 ${received} / ${size} 字节`, { next: "重试" });
     }
     await rename(part, dest);

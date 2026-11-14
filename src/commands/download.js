@@ -127,7 +127,7 @@ async function planFolder(page, node, top) {
     // eslint-disable-next-line no-await-in-loop
     const have = await statOrNull(dest);
     if (!have) todo.push({ ...f, dest });
-    else if (have.isFile() && have.size === f.node.size) kept.push({ ...f, dest });
+    else if (have.isFile() && have.size === f.node.size) kept.push({ path: dest, size: have.size });
     else clashes.push(dest);
   }
   if (clashes.length) {

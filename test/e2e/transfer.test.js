@@ -226,9 +226,16 @@ describe("e2e transfer", { timeout: 600_000 }, () => {
         `low ${stamp}\n`,
       );
       assert.ok(existsSync(join(dest, "tree", "empty")));
-      const second = await s.json("download", `${R}/up/tree`, dest);
+      const second = await s.json("download", `${R}/up/tree`, dest, "--full");
       assert.equal(second.count, 0);
       assert.equal(second.skipped, 3);
+      // --full lists every file in the folder, the skipped ones too
+      const tree = join(dest, "tree");
+      assert.deepEqual(second.files.toSorted(), [
+        join(tree, "sub", "deep", "low.txt"),
+        join(tree, "sub", "mid.txt"),
+        join(tree, "top.txt"),
+      ]);
     });
 
     test("a local file of the same name but other content stops a folder download before it writes anything", async () => {

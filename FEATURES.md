@@ -349,7 +349,7 @@ next: 用 quark ls /WORK 看这个目录里有什么
 ```
 
 - 不输出堆栈，不输出"失败了"这种没有信息的话。
-- 需要用户出场的错误，`next` 明说是请用户做什么，比如请用户运行 `quark login` 扫码。agent 据此停下来找用户，不会反复重试。
+- 需要用户出场的错误，`next` 明说用户要做什么（扫码、批准、装软件、清空间）；agent 能运行的命令，由 agent 自己运行，比如 `quark login`，只把扫码留给用户。agent 据此停下来找用户，不会反复重试。
 - 同一个错误码永远对应同一个退出码，错误码的清单见下面的失败表。
 
 Settings: 无。
@@ -366,11 +366,11 @@ Settings: 无。
 
 | 情况                                        | 错误码                  | 退出码 | `next` 说什么                                        | 功能                    |
 | ------------------------------------------- | ----------------------- | ------ | ---------------------------------------------------- | ----------------------- |
-| 没登录或登录态过期                          | `not_logged_in`         | 3      | 请用户运行 `quark login` 扫码                        | F2、F4–F16              |
+| 没登录或登录态过期                          | `not_logged_in`         | 3      | 运行 `quark login`，请用户扫弹出的二维码             | F2、F4–F16              |
 | 已经登录时再 `login`                        | `already_logged_in`     | 1      | 先 `quark logout`，或者直接用                        | F1                      |
 | 本机没有 Chrome                             | `chrome_missing`        | 1      | 请用户安装 Google Chrome                             | F1                      |
-| 用户关掉小窗没扫码                          | `login_cancelled`       | 1      | 请用户重新运行 `quark login`                         | F1                      |
-| 5 分钟没人扫码                              | `login_timeout`         | 1      | 请用户重新运行 `quark login`                         | F1                      |
+| 用户关掉小窗没扫码                          | `login_cancelled`       | 1      | 问用户还要不要登录，要就再运行 `quark login`         | F1                      |
+| 5 分钟没人扫码                              | `login_timeout`         | 1      | 确认用户在电脑前，再运行 `quark login`               | F1                      |
 | 网盘路径不存在                              | `not_found`             | 4      | `quark ls` 看上一级目录                              | F4、F6–F12              |
 | 本地路径不存在                              | `local_not_found`       | 4      | 检查本地路径                                         | F11、F12                |
 | `ls` 的路径是文件                           | `not_a_folder`          | 1      | 看单个文件用 `quark info`                            | F4                      |

@@ -45,7 +45,7 @@ export const fail = (code, message, extra = {}) => new QuarkError(message, { cod
 export const usageError = (m, next) => fail("usage", m, { next });
 export const loginError = () =>
   fail("not_logged_in", "没有登录，或登录已过期", {
-    next: "请用户运行 `quark login` 扫码登录，然后重试",
+    next: "运行 `quark login`，请用户扫弹出的二维码，然后重试",
   });
 export const notFound = (m, next) => fail("not_found", m, { next });
 export const refused = (m, extra) =>

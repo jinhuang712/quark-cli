@@ -9,7 +9,7 @@ export async function nickname(page) {
   if (!res.success && page.http) throw loginError();
   if (!res.success) {
     throw fail("error", "读取账号信息失败", {
-      next: "稍后重试；反复失败请用户运行 `quark login` 重新登录",
+      next: "稍后重试；反复失败，问过用户后运行 `quark logout`，再运行 `quark login`，请用户扫码",
       detail: res.msg || JSON.stringify(res),
     });
   }

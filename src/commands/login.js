@@ -27,7 +27,7 @@ export async function waitForScan(page, win, { timeoutMs = TIMEOUT_MS } = {}) {
   while (Date.now() < deadline) {
     if (closedByUser)
       throw fail("login_cancelled", "二维码窗口被关闭，登录已取消", {
-        next: "请用户重新运行 `quark login` 扫码",
+        next: "问用户还要不要登录；要就再运行 `quark login`，请用户扫码",
       });
     // eslint-disable-next-line no-await-in-loop
     if (await isLoggedIn(page)) return;
@@ -42,7 +42,7 @@ export async function waitForScan(page, win, { timeoutMs = TIMEOUT_MS } = {}) {
     await sleep(POLL_MS);
   }
   throw fail("login_timeout", "5 分钟内没有人扫码，登录超时", {
-    next: "请用户重新运行 `quark login` 扫码",
+    next: "确认用户在电脑前，再运行 `quark login`，请用户扫码",
   });
 }
 

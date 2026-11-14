@@ -27,6 +27,123 @@ async function expand(local, rel, found) {
   await Promise.all(usable.map((e) => expand(join(local, e.name), posix.join(rel, e.name), found)));
 }
 
+// The arguments and the local path, checked.
+async function checkLocal(args) {
+  if (args.length !== 2) {
+    throw fail("usage", "需要两个参数：本地路径和网盘目录", {
+      next: "用法：quark upload <本地路径> <网盘目录>",
+    });
+  }
+  const local = localResolve(args[0]);
+  const info = await stat(local).catch(() => null);
+  if (!info) throw fail("local_not_found", `本地没有 ${local}`, { next: "检查本地路径" });
+  if (!info.isFile() && !info.isDirectory()) {
+    throw fail("error", `${local} 既不是文件也不是文件夹`, { next: "换一个普通文件或文件夹" });
+  }
+  return { local, info };
+}
+
+// The drive folder to upload into: it has to exist, and has to be a folder.
+async function checkTarget(page, base) {
+  const target = await resolve(page, base).catch((e) => {
+    if (e.code !== "not_found") throw e;
+    throw fail("not_found", `网盘里没有目录 ${base}`, {
+      next: `先 quark mkdir ${base}，或者换一个已有的目录`,
+    });
+  });
+  if (!isDir(target))
+    throw fail("not_a_folder", `${base} 是文件，不是文件夹`, { next: "换一个网盘目录" });
+  return target;
+}
+
+async function refuseClash(page, target, base, name, topPath) {
+  if ((await listDir(page, target.fid)).some((f) => sameName(f.file_name, name))) {
+    throw fail("already_exists", `${base} 里已有 ${name}`, {
+      next: `要保留网盘上的 ${topPath}：换一个网盘目录，或者换一个本地文件名再传。要替换它：先 quark rename ${topPath} 新名字 留作备份，或者请用户同意后 quark rm ${topPath} --yes`,
+    });
+  }
+}
+
+// After the first write, a failure leaves partial work on the drive: say what is there.
+function partialFailure(e, topPath, uploaded) {
+  const done = uploaded.length
+    ? `已传好 ${uploaded.length} 个文件：${uploaded.map((u) => u.path).join("、")}`
+    : "还没有传好的文件";
+  return fail(e.code, `${e.message}；${done}`, {
+    next: `把新建的目录 ${topPath} 给用户看过后，用 quark rm ${topPath} --yes 删掉，再重试；${e.next ?? ""}`.replace(
+      /；$/,
+      "",
+    ),
+    detail: e.detail,
+  });
+}
+
+// Creates the top folder and the ones below it; resolves to a map from relative path to folder id.
+async function makeTree(page, target, name, dirs, topPath) {
+  const folders = new Map();
+  try {
+    folders.set(name, await makeFolder(page, target.fid, name));
+    // Folder levels nest, so shortest paths go first.
+    for (const rel of dirs.filter((d) => d !== name).toSorted((a, b) => a.length - b.length)) {
+      // eslint-disable-next-line no-await-in-loop
+      folders.set(
+        rel,
+        await makeFolder(page, folders.get(posix.dirname(rel)), posix.basename(rel)),
+      );
+    }
+  } catch (e) {
+    throw partialFailure(asNetworkError(e, `新建文件夹 ${topPath}`), topPath, []);
+  }
+  return folders;
+}
+
+const driveDir = (base, rel) => (rel === "." ? base : posix.join(base, rel));
+
+// A few workers pull files off one queue; the first failure stops new files and the
+// ones already in flight finish, so `results` is exactly what is on the drive.
+async function uploadAll({ page, files, folders, target, base, isFolder, progress }) {
+  const queue = files.map((file, index) => ({ file, index }));
+  const results = [];
+  let failure = null;
+  const worker = async () => {
+    while (!failure && queue.length) {
+      const { file, index } = queue.shift();
+      const dir = driveDir(base, isFolder ? file.dir : ".");
+      progress(`正在上传 ${posix.join(dir, file.name)}`);
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const { instant, name: storedName } = await uploadFile(page, {
+          fid: isFolder ? folders.get(file.dir) : target.fid,
+          folderName: basename(dir) || "root",
+          local: file.local,
+          name: file.name,
+          size: file.size,
+        });
+        results[index] = { path: posix.join(dir, storedName), size: file.size, instant };
+      } catch (e) {
+        failure ??= e;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
+  return { results, failure };
+}
+
+// The result: what was uploaded, and a note when Quark stored a name differently.
+function summarize(uploaded) {
+  const data = {
+    uploaded,
+    count: uploaded.length,
+    instant_count: uploaded.filter((u) => u.instant).length,
+  };
+  // Quark rewrites ' " < > in names; say so, so the caller knows which path to use afterwards.
+  if (uploaded.some((u) => /&(#39|quot|lt|gt);/.test(basename(u.path)))) {
+    data.note =
+      "夸克把名字里的 ' \" < > 存成了 &#39; &quot; &lt; &gt;，后续命令用上面输出的路径（也可以用原名，夸克会认）";
+  }
+  return data;
+}
+
 export default {
   name: "upload",
   usage: "upload <local-path> <drive-dir>",
@@ -42,118 +159,33 @@ export default {
   errors: ["not_found", "local_not_found", "already_exists", "refused", "no_space", "network"],
   related: ["mkdir", "ls", "rm"],
   async run({ page, args, emit, progress }) {
-    if (args.length !== 2) {
-      throw fail("usage", "需要两个参数：本地路径和网盘目录", {
-        next: "用法：quark upload <本地路径> <网盘目录>",
-      });
-    }
-    const local = localResolve(args[0]);
-    const info = await stat(local).catch(() => null);
-    if (!info) throw fail("local_not_found", `本地没有 ${local}`, { next: "检查本地路径" });
-    if (!info.isFile() && !info.isDirectory()) {
-      throw fail("error", `${local} 既不是文件也不是文件夹`, { next: "换一个普通文件或文件夹" });
-    }
-
+    const { local, info } = await checkLocal(args);
     const base = normalize(args[1]);
-    const target = await resolve(page, base).catch((e) => {
-      if (e.code !== "not_found") throw e;
-      throw fail("not_found", `网盘里没有目录 ${base}`, {
-        next: `先 quark mkdir ${base}，或者换一个已有的目录`,
-      });
-    });
-    if (!isDir(target))
-      throw fail("not_a_folder", `${base} 是文件，不是文件夹`, { next: "换一个网盘目录" });
-
+    const target = await checkTarget(page, base);
     const name = basename(local);
     const topPath = posix.join(base, name);
-    if ((await listDir(page, target.fid)).some((f) => sameName(f.file_name, name))) {
-      throw fail("already_exists", `${base} 里已有 ${name}`, {
-        next: `要保留网盘上的 ${topPath}：换一个网盘目录，或者换一个本地文件名再传。要替换它：先 quark rename ${topPath} 新名字 留作备份，或者请用户同意后 quark rm ${topPath} --yes`,
-      });
-    }
+    await refuseClash(page, target, base, name, topPath);
 
     const found = { files: [], dirs: [] };
     await expand(local, name, found);
     const files = found.files.toSorted(
       (a, b) => a.dir.localeCompare(b.dir) || a.name.localeCompare(b.name),
     );
-    const driveOf = (rel) => (rel === "." ? base : posix.join(base, rel));
+    const isFolder = info.isDirectory();
+    const folders = isFolder ? await makeTree(page, target, name, found.dirs, topPath) : new Map();
+    const { results, failure } = await uploadAll({
+      page,
+      files,
+      folders,
+      target,
+      base,
+      isFolder,
+      progress,
+    });
+    const uploaded = results.filter(Boolean);
+    if (failure) throw isFolder ? partialFailure(failure, topPath, uploaded) : failure;
 
-    const uploaded = [];
-    const cleanup = () => `quark rm ${topPath} --yes`;
-    // After the first write, a failure leaves partial work on the drive: say what is there.
-    const interrupted = (e) => {
-      if (!info.isDirectory()) return e;
-      const done = uploaded.length
-        ? `已传好 ${uploaded.length} 个文件：${uploaded.map((u) => u.path).join("、")}`
-        : "还没有传好的文件";
-      return fail(e.code, `${e.message}；${done}`, {
-        next: `把新建的目录 ${topPath} 给用户看过后，用 ${cleanup()} 删掉，再重试；${e.next ?? ""}`.replace(
-          /；$/,
-          "",
-        ),
-        detail: e.detail,
-      });
-    };
-
-    const folders = new Map();
-    try {
-      if (info.isDirectory()) {
-        folders.set(name, await makeFolder(page, target.fid, name));
-        // Folder levels nest, so shortest paths go first.
-        for (const rel of found.dirs
-          .filter((d) => d !== name)
-          .toSorted((a, b) => a.length - b.length)) {
-          // eslint-disable-next-line no-await-in-loop
-          folders.set(
-            rel,
-            await makeFolder(page, folders.get(posix.dirname(rel)), posix.basename(rel)),
-          );
-        }
-      }
-    } catch (e) {
-      throw interrupted(asNetworkError(e, `新建文件夹 ${topPath}`));
-    }
-
-    // A few workers pull files off one queue; the first failure stops new files and the
-    // ones already in flight finish, so `uploaded` is exactly what is on the drive.
-    const queue = files.map((file, index) => ({ file, index }));
-    const results = [];
-    let failure = null;
-    const worker = async () => {
-      while (!failure && queue.length) {
-        const { file, index } = queue.shift();
-        const dir = driveOf(info.isDirectory() ? file.dir : ".");
-        progress(`正在上传 ${posix.join(dir, file.name)}`);
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const { instant, name: storedName } = await uploadFile(page, {
-            fid: info.isDirectory() ? folders.get(file.dir) : target.fid,
-            folderName: basename(dir) || "root",
-            local: file.local,
-            name: file.name,
-            size: file.size,
-          });
-          results[index] = { path: posix.join(dir, storedName), size: file.size, instant };
-        } catch (e) {
-          failure ??= e;
-        }
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
-    uploaded.push(...results.filter(Boolean));
-    if (failure) throw interrupted(failure);
-
-    const data = {
-      uploaded,
-      count: uploaded.length,
-      instant_count: uploaded.filter((u) => u.instant).length,
-    };
-    // Quark rewrites ' " < > in names; say so, so the caller knows which path to use afterwards.
-    if (uploaded.some((u) => /&(#39|quot|lt|gt);/.test(basename(u.path)))) {
-      data.note =
-        "夸克把名字里的 ' \" < > 存成了 &#39; &quot; &lt; &gt;，后续命令用上面输出的路径（也可以用原名，夸克会认）";
-    }
+    const data = summarize(uploaded);
     emit({ data, lines: uploaded.map((u) => u.path), full: data });
   },
 };

@@ -9,6 +9,11 @@ import { size } from "../format.js";
 
 // Folders download a couple of files at once; each big file already uses several connections.
 const CONCURRENCY = 2;
+// Progress prints a line each time a file passes another REPORT_EVERY percent of its size.
+const PERCENT = 100;
+const REPORT_EVERY = 10;
+// A clash error names this many files, not all of them.
+const CLASHES_SHOWN = 5;
 
 async function statOrNull(path) {
   try {
@@ -30,6 +35,164 @@ async function walk(page, node, rel, found) {
       return undefined;
     }),
   );
+}
+
+// The arguments, checked: the drive item to fetch and the local directory it goes into.
+async function targets(page, args) {
+  if (args.length !== 2) {
+    throw fail("usage", "需要两个参数：网盘路径和本地目录", {
+      next: "用法：quark download <网盘路径> <本地目录>",
+    });
+  }
+  const path = normalize(args[0]);
+  const dir = localResolve(args[1]);
+  const node = await resolve(page, path);
+  const dirStat = await statOrNull(dir);
+  if (!dirStat) {
+    throw fail("local_not_found", `本地没有目录 ${dir}`, {
+      next: `先建好目录，或换一个已有的目录`,
+    });
+  }
+  if (!dirStat.isDirectory()) {
+    throw fail("not_a_folder", `${dir} 是文件，不是目录`, { next: "换一个已有的本地目录" });
+  }
+  return { path, dir, node };
+}
+
+// Reports progress for one file, one line per REPORT_EVERY percent.
+function reporter(file, progress) {
+  let step = -1;
+  return (got, total) => {
+    const pct = total ? Math.floor((got / total) * (PERCENT / REPORT_EVERY)) * REPORT_EVERY : 0;
+    if (total && pct === step) return;
+    step = pct;
+    progress(
+      `${file.file_name}: ${size(got)}${total ? ` / ${size(total)} ${Math.floor((got / total) * PERCENT)}%` : ""}`,
+    );
+  };
+}
+
+// One file: downloaded to `dest`, or, with --share-big and a file Quark will not hand
+// out, shared instead. Resolves to the local size, or null when it was shared.
+function makeFetcher({ page, context, flags, progress, shared }) {
+  return async (file, dest, drivePath) => {
+    try {
+      await downloadFile(page, context, {
+        fid: file.fid,
+        dest,
+        size: file.size,
+        updated: file.updated_at ?? file.l_updated_at,
+        asDesktop: flags["as-desktop"],
+        onProgress: reporter(file, progress),
+      });
+      return file.size;
+    } catch (e) {
+      if (!e.tooBig || !flags["share-big"]) throw e;
+      progress(`${drivePath} 太大，改为建分享链接`);
+      const made = await createShare(page, [file], { days: 7, withCode: true });
+      shared.push({ path: drivePath, link: made.share_url, code: made.passcode });
+      return null;
+    }
+  };
+}
+
+async function downloadSingle({ node, path, dir, fetchOne, shared, emit }) {
+  const dest = join(dir, node.file_name);
+  if (await statOrNull(dest)) {
+    throw fail("already_exists", `本地已有 ${dest}`, {
+      next: "先删掉或改名本地的同名文件，或者换一个目录",
+    });
+  }
+  const got = await fetchOne(node, dest, path);
+  const data = got === null ? { shared } : { path: dest, size: node.size };
+  emit({
+    data,
+    lines: got === null ? shared.map((s) => s.link) : [dest],
+    full: { ...node, ...data },
+  });
+}
+
+// What a folder download has to do: the same-named local folder may already exist, so a
+// second run picks up where the first stopped. Files already there at full size are kept;
+// any other clash is refused.
+async function planFolder(page, node, top) {
+  const found = { files: [], dirs: [] };
+  await walk(page, node, [], found);
+  const todo = [];
+  const kept = [];
+  const clashes = [];
+  const ordered = found.files.toSorted((a, b) => a.rel.join("/").localeCompare(b.rel.join("/")));
+  for (const f of ordered) {
+    const dest = join(top, ...f.rel);
+    // eslint-disable-next-line no-await-in-loop
+    const have = await statOrNull(dest);
+    if (!have) todo.push({ ...f, dest });
+    else if (have.isFile() && have.size === f.node.size) kept.push({ ...f, dest });
+    else clashes.push(dest);
+  }
+  if (clashes.length) {
+    throw fail(
+      "already_exists",
+      `本地已有内容不同的同名文件：${clashes.slice(0, CLASHES_SHOWN).join("、")}`,
+      {
+        next: "先删掉或改名这些本地文件，或者换一个目录",
+      },
+    );
+  }
+  return { dirs: found.dirs, todo, kept };
+}
+
+// A few workers pull files off one queue; the first failure stops new files.
+async function fetchAll(todo, path, fetchOne) {
+  const done = [];
+  const queue = [...todo];
+  let failure = null;
+  const worker = async () => {
+    while (!failure && queue.length) {
+      const f = queue.shift();
+      const drivePath = [path, ...f.rel].join("/");
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const got = await fetchOne(f.node, f.dest, drivePath);
+        if (got !== null) done.push({ path: f.dest, size: got });
+      } catch (e) {
+        failure ??= e;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, todo.length) }, worker));
+  return { done, failure };
+}
+
+// The first failure, said with what is already on disk and how to carry on.
+function partialFailure(failure, done, top) {
+  const said = done.length ? `已下载 ${done.length} 个文件` : "还没有下载好的文件";
+  return fail(failure.code, `${failure.message}；${said}，在 ${top}`, {
+    next: `再运行一次同样的命令会跳过已下载的文件，没下完的从断点继续；${failure.next ?? ""}`.replace(
+      /；$/,
+      "",
+    ),
+    detail: failure.detail,
+  });
+}
+
+async function downloadFolder({ page, node, path, dir, fetchOne, shared, emit }) {
+  const top = join(dir, node.file_name);
+  const { dirs, todo, kept } = await planFolder(page, node, top);
+  for (const rel of dirs) {
+    // eslint-disable-next-line no-await-in-loop
+    await mkdir(join(top, ...rel), { recursive: true });
+  }
+  const { done, failure } = await fetchAll(todo, path, fetchOne);
+  if (failure) throw partialFailure(failure, done, top);
+  const files = [...kept, ...done].map((f) => f.path);
+  const data = {
+    path: top,
+    count: done.length,
+    skipped: kept.length,
+    ...(shared.length && { shared }),
+  };
+  emit({ data, lines: [top], full: { ...data, files } });
 }
 
 export default {
@@ -64,138 +227,10 @@ export default {
   errors: ["not_found", "local_not_found", "already_exists", "no_space", "network", "refused"],
   related: ["ls", "info", "upload", "share"],
   async run({ page, context, args, flags, emit, progress }) {
-    if (args.length !== 2) {
-      throw fail("usage", "需要两个参数：网盘路径和本地目录", {
-        next: "用法：quark download <网盘路径> <本地目录>",
-      });
-    }
-    const path = normalize(args[0]);
-    const dir = localResolve(args[1]);
-    const node = await resolve(page, path);
-    const dirStat = await statOrNull(dir);
-    if (!dirStat) {
-      throw fail("local_not_found", `本地没有目录 ${dir}`, {
-        next: `先建好目录，或换一个已有的目录`,
-      });
-    }
-    if (!dirStat.isDirectory()) {
-      throw fail("not_a_folder", `${dir} 是文件，不是目录`, { next: "换一个已有的本地目录" });
-    }
-
+    const { path, dir, node } = await targets(page, args);
     const shared = [];
-    // One file: downloaded to `dest`, or, with --share-big and a file Quark will not hand
-    // out, shared instead. Resolves to the local size, or null when it was shared.
-    const fetchOne = async (file, dest, drivePath) => {
-      let step = -1;
-      const onProgress = (got, total) => {
-        const pct = total ? Math.floor((got / total) * 10) * 10 : 0;
-        if (total && pct === step) return;
-        step = pct;
-        progress(
-          `${file.file_name}: ${size(got)}${total ? ` / ${size(total)} ${Math.floor((got / total) * 100)}%` : ""}`,
-        );
-      };
-      try {
-        await downloadFile(page, context, {
-          fid: file.fid,
-          dest,
-          size: file.size,
-          updated: file.updated_at ?? file.l_updated_at,
-          asDesktop: flags["as-desktop"],
-          onProgress,
-        });
-        return file.size;
-      } catch (e) {
-        if (!e.tooBig || !flags["share-big"]) throw e;
-        progress(`${drivePath} 太大，改为建分享链接`);
-        const made = await createShare(page, [file], { days: 7, withCode: true });
-        shared.push({ path: drivePath, link: made.share_url, code: made.passcode });
-        return null;
-      }
-    };
-
-    if (!isDir(node)) {
-      const dest = join(dir, node.file_name);
-      if (await statOrNull(dest)) {
-        throw fail("already_exists", `本地已有 ${dest}`, {
-          next: "先删掉或改名本地的同名文件，或者换一个目录",
-        });
-      }
-      const got = await fetchOne(node, dest, path);
-      const data = got === null ? { shared } : { path: dest, size: node.size };
-      emit({
-        data,
-        lines: got === null ? shared.map((s) => s.link) : [dest],
-        full: { ...node, ...data },
-      });
-      return;
-    }
-
-    // A folder: the same-named local folder may already exist, so a second run picks up where
-    // the first stopped. Files already there at full size are kept; any other clash is refused.
-    const top = join(dir, node.file_name);
-    const found = { files: [], dirs: [] };
-    await walk(page, node, [], found);
-    const todo = [];
-    const kept = [];
-    const clashes = [];
-    const ordered = found.files.toSorted((a, b) => a.rel.join("/").localeCompare(b.rel.join("/")));
-    for (const f of ordered) {
-      const dest = join(top, ...f.rel);
-      // eslint-disable-next-line no-await-in-loop
-      const have = await statOrNull(dest);
-      if (!have) todo.push({ ...f, dest });
-      else if (have.isFile() && have.size === f.node.size) kept.push({ ...f, dest });
-      else clashes.push(dest);
-    }
-    if (clashes.length) {
-      throw fail(
-        "already_exists",
-        `本地已有内容不同的同名文件：${clashes.slice(0, 5).join("、")}`,
-        {
-          next: "先删掉或改名这些本地文件，或者换一个目录",
-        },
-      );
-    }
-    for (const rel of found.dirs) {
-      // eslint-disable-next-line no-await-in-loop
-      await mkdir(join(top, ...rel), { recursive: true });
-    }
-
-    const done = [];
-    const queue = [...todo];
-    let failure = null;
-    const worker = async () => {
-      while (!failure && queue.length) {
-        const f = queue.shift();
-        const drivePath = [path, ...f.rel].join("/");
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const got = await fetchOne(f.node, f.dest, drivePath);
-          if (got !== null) done.push({ path: f.dest, size: got });
-        } catch (e) {
-          failure ??= e;
-        }
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, todo.length) }, worker));
-    if (failure) {
-      const said = done.length ? `已下载 ${done.length} 个文件` : "还没有下载好的文件";
-      throw fail(failure.code, `${failure.message}；${said}，在 ${top}`, {
-        next: `再运行一次同样的命令会跳过已下载的文件，没下完的从断点继续；${failure.next ?? ""}`.replace(
-          /；$/,
-          "",
-        ),
-        detail: failure.detail,
-      });
-    }
-    const files = [...kept, ...done].map((f) => f.path);
-    const data = {
-      path: top,
-      count: done.length,
-      skipped: kept.length,
-      ...(shared.length && { shared }),
-    };
-    emit({ data, lines: [top], full: { ...data, files } });
+    const fetchOne = makeFetcher({ page, context, flags, progress, shared });
+    const job = { page, node, path, dir, fetchOne, shared, emit };
+    await (isDir(node) ? downloadFolder(job) : downloadSingle(job));
   },
 };
